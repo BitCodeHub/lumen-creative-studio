@@ -32,6 +32,7 @@ export default function HomePage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [hovered, setHovered] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<GalleryImage | null>(null);
   const [tab, setTab] = useState<"trends" | "shorts">("trends");
 
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -302,7 +303,8 @@ export default function HomePage() {
                     style={{ breakInside: "avoid", marginBottom: 8, position: "relative",
                       borderRadius: 10, overflow: "hidden", cursor: "pointer", background: "#161616" }}
                     onMouseEnter={() => setHovered(img.id)}
-                    onMouseLeave={() => setHovered(null)}>
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => setLightbox(img)}>
                     <img src={img.imageUrl} alt={img.prompt.slice(0, 60)} loading="lazy"
                       style={{ width: "100%", display: "block", borderRadius: 10,
                         transition: "transform 0.25s ease",
@@ -435,6 +437,53 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {/* Lightbox Modal */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.92)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position: "relative", maxWidth: "90vw", maxHeight: "90vh",
+              borderRadius: 14, overflow: "hidden", background: "#111",
+              boxShadow: "0 25px 80px rgba(0,0,0,0.8)" }}>
+            {/* Close button */}
+            <button onClick={() => setLightbox(null)}
+              style={{ position: "absolute", top: 12, right: 12, zIndex: 10,
+                width: 34, height: 34, borderRadius: "50%", border: "none",
+                background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                color: "white", fontSize: 18, cursor: "pointer", display: "flex",
+                alignItems: "center", justifyContent: "center" }}>✕</button>
+            {/* Full image */}
+            <img src={lightbox.imageUrl} alt={lightbox.prompt}
+              style={{ display: "block", maxWidth: "85vw", maxHeight: "80vh",
+                objectFit: "contain" }} />
+            {/* Info bar */}
+            <div style={{ padding: "12px 16px", background: "#111",
+              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, flex: 1,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {lightbox.prompt}
+              </p>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <a href={lightbox.imageUrl} download={lightbox.id}
+                  onClick={e => e.stopPropagation()}
+                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px",
+                    borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "white",
+                    textDecoration: "none", fontSize: 12, cursor: "pointer" }}>
+                  <Download size={13} /> Download
+                </a>
+                <button onClick={e => { e.stopPropagation(); remix(lightbox); setLightbox(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px",
+                    borderRadius: 8, background: "rgba(77,159,255,0.2)", color: "#9dd0ff",
+                    border: "none", fontSize: 12, cursor: "pointer" }}>
+                  <RefreshCw size={13} /> Remix
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
