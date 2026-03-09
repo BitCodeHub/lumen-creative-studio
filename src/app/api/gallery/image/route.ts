@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (!file) return new NextResponse('Missing file', { status: 400 });
 
   try {
-    const res = await fetch(`${GALLERY_BASE}/images/${encodeURIComponent(file)}`, {
+    const res = await fetch(`${GALLERY_BASE}/image/${encodeURIComponent(file)}`, {
       headers: { 'ngrok-skip-browser-warning': '1' },
       cache: 'no-store',
     });
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const blob = await res.blob();
     return new NextResponse(blob, {
       headers: {
-        'Content-Type': res.headers.get('Content-Type') || 'image/png',
+        'Content-Type': res.headers.get('Content-Type') || 'image/jpeg',
         'Cache-Control': 'public, max-age=86400',
       },
     });
