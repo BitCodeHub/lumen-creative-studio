@@ -50,10 +50,10 @@ const toolDescriptions: Record<string, string> = {
 };
 
 const models = [
-  { id: "flux-dev", name: "FLUX.1-dev", tag: "Default" },
-  { id: "flux-schnell", name: "FLUX Schnell", tag: "Fast" },
-  { id: "realvis", name: "RealVisXL", tag: "Photo" },
-  { id: "sdxl", name: "SDXL", tag: "Classic" },
+  { id: "flux-dev", name: "FLUX.1-dev", tag: "Default", quality: "★★★★★", time: "~2-3 min" },
+  { id: "flux-schnell", name: "FLUX Schnell", tag: "Fast", quality: "★★★★☆", time: "~30 sec" },
+  { id: "realvis", name: "RealVisXL", tag: "Photo", quality: "★★★★★", time: "~2-3 min" },
+  { id: "sdxl", name: "SDXL", tag: "Classic", quality: "★★★☆☆", time: "~1 min" },
 ];
 
 export default function HomePage() {
@@ -71,7 +71,7 @@ export default function HomePage() {
     setIsGenerating(true);
     setError(null);
     setGeneratedImage(null);
-    setProgress("Connecting to DGX...");
+    setProgress("Creating your masterpiece...");
     
     try {
       const response = await fetch("/api/generate", {
@@ -95,7 +95,7 @@ export default function HomePage() {
         setProgress("");
       }
     } catch (err) {
-      setError("Failed to connect to generation server");
+      setError("Generation temporarily unavailable. Please try again.");
       setProgress("");
     } finally {
       setIsGenerating(false);
@@ -256,11 +256,16 @@ export default function HomePage() {
                     key={model.id}
                     onClick={() => setSelectedModel(model.id)}
                     className={`model-btn ${selectedModel === model.id ? "active" : ""}`}
+                    title={`Quality: ${model.quality} | Est. time: ${model.time}`}
+                    style={{ flexDirection: "column", alignItems: "flex-start", padding: "0.5rem 0.75rem" }}
                   >
-                    {model.name}
-                    <span style={{ marginLeft: "0.375rem", opacity: 0.6 }}>
-                      {model.tag}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                      {model.name}
+                      <span style={{ opacity: 0.6 }}>{model.tag}</span>
+                    </div>
+                    <div style={{ fontSize: "0.6875rem", opacity: 0.5, marginTop: "0.125rem" }}>
+                      {model.quality} · {model.time}
+                    </div>
                   </button>
                 ))}
               </div>

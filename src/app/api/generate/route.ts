@@ -415,7 +415,7 @@ async function queuePrompt(workflow: object): Promise<string> {
   return data.prompt_id;
 }
 
-async function waitForImage(promptId: string, maxWaitMs = 180000): Promise<string> {
+async function waitForImage(promptId: string, maxWaitMs = 600000): Promise<string> {
   const startTime = Date.now();
   
   while (Date.now() - startTime < maxWaitMs) {
@@ -440,7 +440,7 @@ async function waitForImage(promptId: string, maxWaitMs = 180000): Promise<strin
     await new Promise(resolve => setTimeout(resolve, 3000));
   }
   
-  throw new Error("Timeout waiting for image generation (3 min)");
+  throw new Error("High demand - please try again in a moment");
 }
 
 export async function POST(request: NextRequest) {
