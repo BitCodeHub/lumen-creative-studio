@@ -225,7 +225,7 @@ function createRealVisWorkflow(prompt: string, seed?: number, upscale = true) {
     "1": {
       "class_type": "CheckpointLoaderSimple",
       "inputs": {
-        "ckpt_name": "RealVisXL_V4.0.safetensors"
+        "ckpt_name": "RealVisXL_V4.safetensors"
       }
     },
     "2": {
@@ -477,6 +477,26 @@ export async function POST(request: NextRequest) {
         break;
     }
     
+    // Clear auto-generated queue if backed up (>5 pending jobs)
+    // This ensures user requests aren't stuck behind auto-variation engine jobs
+    try {
+      const queueRes = await fetch(`${COMFYUI_URL}/queue`);
+      const queueData = await queueRes.json();
+      const pendingCount = Array.isArray(queueData.queue_pending) ? queueData.queue_pending.length : 0;
+      if (pendingCount > 5) {
+        console.log(`[Generate] Clearing ${pendingCount} pending jobs to prioritize user request`);
+        await fetch(`${COMFYUI_URL}/queue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clear: true })
+        });
+        // Brief pause to let queue settle
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } catch (queueErr) {
+      console.warn('[Generate] Queue check failed (non-fatal):', queueErr);
+    }
+
     // Queue the generation
     const promptId = await queuePrompt(workflow);
     console.log(`[Generate] Queued: ${promptId}`);
