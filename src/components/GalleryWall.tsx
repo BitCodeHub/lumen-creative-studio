@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Copy, Heart, Download, Loader2 } from "lucide-react";
+import { Sparkles, Copy, Heart, Download, Loader2, Check } from "lucide-react";
 
 interface GalleryImage {
   id: string;
@@ -22,8 +22,9 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Fetch gallery images
   const fetchImages = useCallback(async (pageNum: number, append: boolean = false) => {
@@ -57,19 +58,26 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
 
   // Infinite scroll observer
   useEffect(() => {
-    if (loading || loadingMore || !hasMore) return;
+    if (loading) return;
+
+    // Disconnect previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore) {
-          setPage(prev => {
-            const nextPage = prev + 1;
-            fetchImages(nextPage, true);
-            return nextPage;
-          });
+        const [entry] = entries;
+        if (entry.isIntersecting && hasMore && !loadingMore) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchImages(nextPage, true);
         }
       },
-      { threshold: 0.1 }
+      { 
+        threshold: 0,
+        rootMargin: "200px" // Load more before user reaches the end
+      }
     );
 
     if (loadMoreRef.current) {
@@ -81,10 +89,12 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
         observerRef.current.disconnect();
       }
     };
-  }, [loading, loadingMore, hasMore, fetchImages]);
+  }, [loading, hasMore, loadingMore, page, fetchImages]);
 
-  const copyPrompt = (prompt: string) => {
+  const copyPrompt = (id: string, prompt: string) => {
     navigator.clipboard.writeText(prompt);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   if (loading) {
@@ -113,71 +123,42 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
       }}>
         <div>
           <h2 style={{ 
-            fontSize: "1.25rem", 
+            fontSize: "1.5rem", 
             fontWeight: 600, 
             color: "#ededed",
             marginBottom: "0.25rem"
           }}>
-            Explore
+            Find your inspiration
           </h2>
           <p style={{ color: "#737373", fontSize: "0.875rem" }}>
-            Get inspired by community creations
+            Explore {images.length}+ AI-generated images with prompts you can use
           </p>
         </div>
       </div>
 
       {/* Masonry Grid */}
-      <div style={{
-        columnCount: 4,
-        columnGap: "1rem",
-        width: "100%"
-      }} className="gallery-masonry">
+      <div className="gallery-masonry">
         {images.map((image) => (
-          <div
-            key={image.id}
-            style={{
-              breakInside: "avoid",
-              marginBottom: "1rem",
-              position: "relative",
-              borderRadius: "0.75rem",
-              overflow: "hidden",
-              background: "#171717",
-              border: "1px solid #2a2a2a",
-              transition: "transform 0.2s, box-shadow 0.2s",
-              cursor: "pointer"
-            }}
-            className="gallery-card"
-          >
+          <div key={image.id} className="gallery-card">
             {/* Image */}
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative", overflow: "hidden" }}>
               <img
                 src={image.imageUrl}
                 alt={image.prompt}
                 style={{
                   width: "100%",
-                  display: "block",
-                  borderRadius: "0.75rem 0.75rem 0 0"
+                  display: "block"
                 }}
                 loading="lazy"
               />
               
               {/* Hover Overlay */}
-              <div className="gallery-overlay" style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                opacity: 0,
-                transition: "opacity 0.2s",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "flex-end",
-                padding: "1rem"
-              }}>
+              <div className="gallery-overlay">
                 {/* Action Buttons */}
                 <div style={{ 
                   display: "flex", 
                   gap: "0.5rem", 
-                  marginBottom: "0.75rem" 
+                  marginBottom: "0.5rem" 
                 }}>
                   <button
                     onClick={(e) => { e.stopPropagation(); onRemix(image.prompt); }}
@@ -194,7 +175,7 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
                     Remix
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); copyPrompt(image.prompt); }}
+                    onClick={(e) => { e.stopPropagation(); copyPrompt(image.id, image.prompt); }}
                     className="btn-secondary"
                     style={{ 
                       padding: "0.5rem 0.75rem", 
@@ -204,8 +185,8 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
                       gap: "0.375rem"
                     }}
                   >
-                    <Copy size={12} />
-                    Copy
+                    {copiedId === image.id ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedId === image.id ? "Copied!" : "Copy"}
                   </button>
                   <a
                     href={image.imageUrl}
@@ -225,32 +206,76 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
               </div>
             </div>
 
-            {/* Prompt Preview */}
-            <div style={{ padding: "0.75rem" }}>
+            {/* Prompt Section - Always Visible */}
+            <div style={{ padding: "0.875rem" }}>
+              {/* Full Prompt - scrollable if too long */}
               <p style={{
-                color: "#a3a3a3",
+                color: "#d4d4d4",
                 fontSize: "0.8125rem",
-                lineHeight: 1.4,
+                lineHeight: 1.5,
+                marginBottom: "0.75rem",
                 display: "-webkit-box",
-                WebkitLineClamp: 2,
+                WebkitLineClamp: 4,
                 WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                textOverflow: "ellipsis"
+                overflow: "hidden"
               }}>
                 {image.prompt}
               </p>
+              
+              {/* Copy Prompt Button */}
+              <button
+                onClick={() => copyPrompt(image.id, image.prompt)}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  background: copiedId === image.id ? "rgba(0, 200, 83, 0.1)" : "rgba(255, 255, 255, 0.05)",
+                  border: copiedId === image.id ? "1px solid rgba(0, 200, 83, 0.3)" : "1px solid #2a2a2a",
+                  borderRadius: "0.375rem",
+                  color: copiedId === image.id ? "#00c853" : "#737373",
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.375rem",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                {copiedId === image.id ? (
+                  <>
+                    <Check size={12} />
+                    Prompt copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} />
+                    Copy prompt to use
+                  </>
+                )}
+              </button>
+              
+              {/* Meta Info */}
               <div style={{ 
                 display: "flex", 
                 alignItems: "center", 
                 justifyContent: "space-between",
-                marginTop: "0.5rem",
+                marginTop: "0.75rem",
+                paddingTop: "0.75rem",
+                borderTop: "1px solid #2a2a2a",
                 fontSize: "0.6875rem",
                 color: "#525252"
               }}>
-                <span>{image.model}</span>
+                <span style={{ 
+                  background: "#171717", 
+                  padding: "0.25rem 0.5rem", 
+                  borderRadius: "0.25rem",
+                  color: "#737373"
+                }}>
+                  {image.model}
+                </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                   <Heart size={10} />
-                  {image.likes}
+                  {image.likes.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -259,7 +284,16 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
       </div>
 
       {/* Load More Trigger */}
-      <div ref={loadMoreRef} style={{ height: "20px", marginTop: "1rem" }}>
+      <div 
+        ref={loadMoreRef} 
+        style={{ 
+          height: "100px", 
+          marginTop: "1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+      >
         {loadingMore && (
           <div style={{ 
             display: "flex", 
@@ -269,7 +303,7 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
             padding: "1rem"
           }}>
             <Loader2 size={20} className="animate-spin" />
-            <span style={{ marginLeft: "0.5rem" }}>Loading more...</span>
+            <span style={{ marginLeft: "0.5rem" }}>Loading more inspirations...</span>
           </div>
         )}
       </div>
@@ -281,7 +315,7 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
           fontSize: "0.875rem",
           padding: "1rem"
         }}>
-          You've seen it all! Create something new ✨
+          You've seen all {images.length} images! Create something new ✨
         </p>
       )}
     </div>
