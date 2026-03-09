@@ -1,101 +1,63 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Video, Home as HomeIcon, ShoppingBag, Utensils, User, ZoomIn, Layers, Film, Workflow } from "lucide-react";
+import { 
+  Sparkles, 
+  Video, 
+  Home, 
+  ShoppingBag, 
+  Utensils, 
+  User, 
+  ZoomIn, 
+  Layers, 
+  Film, 
+  Workflow,
+  Settings,
+  CreditCard,
+  HelpCircle,
+  Bell,
+  Search,
+  Check,
+  Loader2
+} from "lucide-react";
 
 const tools = [
-  {
-    id: "image-generator",
-    name: "AI Image Generator",
-    description: "Create stunning images from text prompts",
-    icon: Sparkles,
-    color: "from-purple-500 to-pink-500",
-    href: "/tools/image-generator",
-  },
-  {
-    id: "video-generator",
-    name: "AI Video Generator",
-    description: "Transform images into videos with AI",
-    icon: Video,
-    color: "from-blue-500 to-cyan-500",
-    href: "/tools/video-generator",
-  },
-  {
-    id: "interior-design",
-    name: "Interior Design",
-    description: "Redesign rooms with AI visualization",
-    icon: HomeIcon,
-    color: "from-green-500 to-emerald-500",
-    href: "/tools/interior-design",
-  },
-  {
-    id: "product-creator",
-    name: "AI Product Creator",
-    description: "Professional product photography with AI",
-    icon: ShoppingBag,
-    color: "from-orange-500 to-amber-500",
-    href: "/tools/product-creator",
-  },
-  {
-    id: "food-creator",
-    name: "Food Creator",
-    description: "Beautiful food photography and styling",
-    icon: Utensils,
-    color: "from-red-500 to-rose-500",
-    href: "/tools/food-creator",
-  },
-  {
-    id: "skin-enhancer",
-    name: "Skin Enhancer",
-    description: "Professional portrait retouching",
-    icon: User,
-    color: "from-pink-500 to-fuchsia-500",
-    href: "/tools/skin-enhancer",
-  },
-  {
-    id: "upscale",
-    name: "AI Upscale",
-    description: "Enhance image resolution up to 4x",
-    icon: ZoomIn,
-    color: "from-indigo-500 to-violet-500",
-    href: "/tools/upscale",
-  },
-  {
-    id: "mega-studio",
-    name: "Mega Studio",
-    description: "All-in-one project management hub",
-    icon: Layers,
-    color: "from-teal-500 to-cyan-500",
-    href: "/tools/mega-studio",
-  },
-  {
-    id: "scenes-creator",
-    name: "Scenes Creator",
-    description: "Create video storyboards from scripts",
-    icon: Film,
-    color: "from-yellow-500 to-orange-500",
-    href: "/tools/scenes-creator",
-  },
-  {
-    id: "app-builder",
-    name: "App Builder",
-    description: "Build AI workflows with drag & drop",
-    icon: Workflow,
-    color: "from-slate-500 to-zinc-500",
-    href: "/tools/app-builder",
-  },
+  { id: "image-generator", name: "Image Generator", icon: Sparkles, gradient: "gradient-purple" },
+  { id: "video-generator", name: "Video Generator", icon: Video, gradient: "gradient-blue" },
+  { id: "interior-design", name: "Interior Design", icon: Home, gradient: "gradient-green" },
+  { id: "product-creator", name: "Product Creator", icon: ShoppingBag, gradient: "gradient-orange" },
+  { id: "food-creator", name: "Food Creator", icon: Utensils, gradient: "gradient-pink" },
+  { id: "skin-enhancer", name: "Skin Enhancer", icon: User, gradient: "gradient-purple" },
+  { id: "upscale", name: "AI Upscale", icon: ZoomIn, gradient: "gradient-blue" },
+  { id: "mega-studio", name: "Mega Studio", icon: Layers, gradient: "gradient-pink" },
+  { id: "scenes-creator", name: "Scenes Creator", icon: Film, gradient: "gradient-green" },
+  { id: "app-builder", name: "App Builder", icon: Workflow, gradient: "gradient-orange" },
 ];
+
+const toolDescriptions: Record<string, string> = {
+  "image-generator": "Create stunning images from text prompts using FLUX and RealVisXL models",
+  "video-generator": "Transform your images into dynamic videos with LTX Video AI",
+  "interior-design": "Redesign any room with AI-powered interior visualization",
+  "product-creator": "Generate professional product photography instantly",
+  "food-creator": "Create mouthwatering food photography and styling",
+  "skin-enhancer": "Professional portrait retouching and enhancement",
+  "upscale": "Enhance image resolution up to 4x with AI",
+  "mega-studio": "All-in-one creative workspace for complex projects",
+  "scenes-creator": "Create video storyboards from scripts",
+  "app-builder": "Build AI workflows with visual drag & drop",
+};
 
 const models = [
-  { id: "flux-pro", name: "FLUX Pro", tag: "Best Quality" },
-  { id: "realvis", name: "RealVisXL", tag: "Photorealistic" },
-  { id: "flux-schnell", name: "FLUX Schnell", tag: "Fast" },
-  { id: "sdxl", name: "SDXL", tag: "Versatile" },
+  { id: "flux-pro", name: "FLUX Pro", tag: "Best" },
+  { id: "realvis", name: "RealVisXL", tag: "Photo" },
+  { id: "flux-schnell", name: "FLUX Fast", tag: "Quick" },
+  { id: "sdxl", name: "SDXL", tag: "Classic" },
 ];
 
-export default function Home() {
+export default function HomePage() {
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState("flux-pro");
+  const [selectedTool, setSelectedTool] = useState("image-generator");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
@@ -121,186 +83,367 @@ export default function Home() {
     }
   };
 
+  const activeTool = tools.find(t => t.id === selectedTool);
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20" />
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="text-center">
-            <h1 className="text-5xl font-bold tracking-tight">
-              <span className="gradient-text">AI Creative Studio</span>
-            </h1>
-            <p className="mt-4 text-xl text-zinc-400">
-              Create stunning images, videos, and more with the power of AI
+    <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0f" }}>
+      {/* Sidebar */}
+      <aside className="sidebar">
+        {/* Logo */}
+        <div style={{ 
+          padding: "1.25rem 1.5rem", 
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem"
+        }}>
+          <div className="gradient-purple" style={{ 
+            width: "36px", 
+            height: "36px", 
+            borderRadius: "10px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            <Sparkles size={20} color="white" />
+          </div>
+          <span className="gradient-text" style={{ fontSize: "1.125rem", fontWeight: 700 }}>
+            Lumen Creative
+          </span>
+        </div>
+
+        {/* Nav Items */}
+        <nav style={{ padding: "1rem 0.75rem", flex: 1 }}>
+          <div style={{ marginBottom: "0.5rem", padding: "0 0.75rem" }}>
+            <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Tools
+            </span>
+          </div>
+          {tools.map((tool) => (
+            <button
+              key={tool.id}
+              onClick={() => setSelectedTool(tool.id)}
+              className={`nav-item ${selectedTool === tool.id ? "active" : ""}`}
+              style={{ 
+                width: "100%", 
+                border: "none", 
+                cursor: "pointer",
+                background: selectedTool === tool.id ? "rgba(168, 85, 247, 0.15)" : "transparent",
+                marginBottom: "2px"
+              }}
+            >
+              <div className={`icon-wrap ${tool.gradient}`}>
+                <tool.icon size={16} color="white" />
+              </div>
+              <span>{tool.name}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Bottom */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "0.75rem" }}>
+          <button className="nav-item" style={{ width: "100%", border: "none", cursor: "pointer", background: "transparent" }}>
+            <Settings size={18} />
+            <span>Settings</span>
+          </button>
+          <button className="nav-item" style={{ width: "100%", border: "none", cursor: "pointer", background: "transparent" }}>
+            <CreditCard size={18} />
+            <span>Billing</span>
+          </button>
+          <button className="nav-item" style={{ width: "100%", border: "none", cursor: "pointer", background: "transparent" }}>
+            <HelpCircle size={18} />
+            <span>Help</span>
+          </button>
+        </div>
+
+        {/* Credits */}
+        <div style={{ padding: "1rem" }}>
+          <div style={{ 
+            background: "linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(236,72,153,0.2) 100%)",
+            borderRadius: "0.75rem",
+            padding: "1rem"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.875rem", color: "#888" }}>Credits</span>
+              <span style={{ fontSize: "1.25rem", fontWeight: 700, color: "white" }}>∞</span>
+            </div>
+            <div style={{ 
+              marginTop: "0.5rem", 
+              height: "6px", 
+              borderRadius: "3px", 
+              background: "rgba(255,255,255,0.1)",
+              overflow: "hidden"
+            }}>
+              <div className="gradient-purple" style={{ width: "100%", height: "100%" }} />
+            </div>
+            <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#666" }}>
+              Unlimited generations
             </p>
           </div>
+        </div>
+      </aside>
 
-          {/* Quick Generate */}
-          <div className="mx-auto mt-12 max-w-3xl">
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-6 backdrop-blur">
-              <div className="flex flex-wrap gap-2 mb-4">
-                {models.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => setSelectedModel(model.id)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                      selectedModel === model.id
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                    }`}
-                  >
-                    {model.name}
-                    {model.tag && (
-                      <span className="ml-2 text-xs opacity-70">{model.tag}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe what you want to create..."
-                  className="flex-1 rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-                />
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !prompt.trim()}
-                  className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-medium text-white hover:opacity-90 transition disabled:opacity-50"
-                >
-                  {isGenerating ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Generating...
-                    </span>
-                  ) : (
-                    "Generate"
-                  )}
-                </button>
-              </div>
+      {/* Main Content */}
+      <main className="main-content">
+        {/* Header */}
+        <header style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 30,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "1rem 1.5rem",
+          background: "rgba(10, 10, 15, 0.9)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(255,255,255,0.1)"
+        }}>
+          <div style={{ position: "relative" }}>
+            <Search size={18} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666" }} />
+            <input 
+              className="input" 
+              placeholder="Search tools, generations..." 
+              style={{ width: "320px", paddingLeft: "40px" }}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <button className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "0.5rem", position: "relative" }}>
+              <Bell size={20} />
+              <span style={{ 
+                position: "absolute", 
+                top: "4px", 
+                right: "4px", 
+                width: "8px", 
+                height: "8px", 
+                borderRadius: "50%", 
+                background: "#a855f7" 
+              }} />
+            </button>
+            <button className="btn-primary" style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}>
+              Upgrade to Pro
+            </button>
+            <button className="btn-secondary" style={{ width: "40px", height: "40px", borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <User size={20} />
+            </button>
+          </div>
+        </header>
 
-              {generatedImage && (
-                <div className="mt-6">
-                  <img
-                    src={generatedImage}
-                    alt="Generated"
-                    className="w-full rounded-xl border border-white/10"
-                  />
+        {/* Content Area */}
+        <div style={{ padding: "2rem" }}>
+          {/* Tool Header */}
+          <div style={{ marginBottom: "2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
+              {activeTool && (
+                <div className={`icon-wrap ${activeTool.gradient}`} style={{ width: "48px", height: "48px", borderRadius: "12px" }}>
+                  <activeTool.icon size={24} color="white" />
                 </div>
               )}
+              <div>
+                <h1 className="gradient-text" style={{ fontSize: "1.75rem", fontWeight: 700 }}>
+                  {activeTool?.name || "AI Creative Studio"}
+                </h1>
+                <p style={{ color: "#888", fontSize: "0.875rem", marginTop: "0.25rem" }}>
+                  {toolDescriptions[selectedTool]}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Tools Grid */}
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            <span className="gradient-text">AI Tools</span>
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {tools.map((tool) => (
-              <a
-                key={tool.id}
-                href={tool.href}
-                className="group card-hover rounded-xl border border-white/10 bg-zinc-900/50 p-6 backdrop-blur"
+          {/* Generation Panel */}
+          <div className="tool-card" style={{ marginBottom: "2rem" }}>
+            {/* Model Selection */}
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+              {models.map((model) => (
+                <button
+                  key={model.id}
+                  onClick={() => setSelectedModel(model.id)}
+                  className={`model-btn ${selectedModel === model.id ? "active" : ""}`}
+                >
+                  {model.name}
+                  <span style={{ marginLeft: "0.5rem", opacity: 0.7, fontSize: "0.75rem" }}>
+                    {model.tag}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Prompt Input */}
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe what you want to create..."
+                className="input"
+                style={{ flex: 1 }}
+                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+              />
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !prompt.trim()}
+                className="btn-primary"
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem", whiteSpace: "nowrap" }}
               >
-                <div className={`inline-flex rounded-lg bg-gradient-to-br ${tool.color} p-3`}>
-                  <tool.icon className="h-6 w-6 text-white" />
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" style={{ animation: "spin 1s linear infinite" }} />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={18} />
+                    Generate
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Generated Image */}
+            {generatedImage && (
+              <div style={{ marginTop: "1.5rem" }}>
+                <img
+                  src={generatedImage}
+                  alt="Generated"
+                  style={{ 
+                    width: "100%", 
+                    maxWidth: "512px",
+                    borderRadius: "0.75rem",
+                    border: "1px solid rgba(255,255,255,0.1)"
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Quick Access Tools */}
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem", color: "white" }}>
+            All Tools
+          </h2>
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", 
+            gap: "1rem" 
+          }}>
+            {tools.map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => setSelectedTool(tool.id)}
+                className="tool-card"
+                style={{ 
+                  border: selectedTool === tool.id ? "1px solid #a855f7" : "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}
+              >
+                <div className={`icon-wrap ${tool.gradient}`} style={{ marginBottom: "0.75rem" }}>
+                  <tool.icon size={16} color="white" />
                 </div>
-                <h3 className="mt-4 font-semibold text-white group-hover:text-purple-400 transition">
+                <h3 style={{ fontWeight: 600, color: "white", fontSize: "0.875rem" }}>
                   {tool.name}
                 </h3>
-                <p className="mt-2 text-sm text-zinc-400">
-                  {tool.description}
+                <p style={{ fontSize: "0.75rem", color: "#666", marginTop: "0.25rem" }}>
+                  {toolDescriptions[tool.id]?.slice(0, 50)}...
                 </p>
-              </a>
+              </button>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Pricing Preview */}
-      <section className="py-20 border-t border-white/10">
-        <div className="mx-auto max-w-7xl px-4">
-          <h2 className="text-3xl font-bold text-center mb-4">
-            <span className="gradient-text">Pricing</span>
-          </h2>
-          <p className="text-center text-zinc-400 mb-12">
-            Start free, upgrade when you need more
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { name: "Free", price: "$0", credits: "50 credits/month", features: ["Basic models", "Standard quality", "Community support"] },
-              { name: "Pro", price: "$19", credits: "500 credits/month", features: ["All models", "HD quality", "Priority support", "API access"], popular: true },
-              { name: "Enterprise", price: "$99", credits: "Unlimited", features: ["All Pro features", "Custom models", "Dedicated support", "Webhooks"] },
-            ].map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-xl border p-6 ${
-                  plan.popular
-                    ? "border-purple-500 bg-purple-500/10"
-                    : "border-white/10 bg-zinc-900/50"
-                }`}
-              >
-                {plan.popular && (
-                  <span className="inline-block rounded-full bg-purple-500 px-3 py-1 text-xs font-medium text-white mb-4">
-                    Most Popular
-                  </span>
-                )}
-                <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                <div className="mt-2">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-zinc-400">/month</span>
+          {/* Pricing Section */}
+          <div style={{ marginTop: "3rem" }}>
+            <h2 className="gradient-text" style={{ fontSize: "1.5rem", fontWeight: 700, textAlign: "center", marginBottom: "0.5rem" }}>
+              Pricing
+            </h2>
+            <p style={{ textAlign: "center", color: "#888", marginBottom: "2rem" }}>
+              Start free, upgrade when you need more
+            </p>
+            
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", 
+              gap: "1.5rem",
+              maxWidth: "900px",
+              margin: "0 auto"
+            }}>
+              {[
+                { name: "Free", price: "$0", credits: "50 credits/month", features: ["Basic models", "Standard quality", "Community support"] },
+                { name: "Pro", price: "$19", credits: "500 credits/month", features: ["All models", "HD quality", "Priority support", "API access"], popular: true },
+                { name: "Enterprise", price: "$99", credits: "Unlimited", features: ["All Pro features", "Custom models", "Dedicated support", "Webhooks"] },
+              ].map((plan) => (
+                <div
+                  key={plan.name}
+                  className={`pricing-card ${plan.popular ? "popular" : ""}`}
+                >
+                  {plan.popular && (
+                    <span style={{ 
+                      display: "inline-block",
+                      background: "#a855f7",
+                      color: "white",
+                      padding: "0.25rem 0.75rem",
+                      borderRadius: "1rem",
+                      fontSize: "0.75rem",
+                      fontWeight: 500,
+                      marginBottom: "1rem"
+                    }}>
+                      Most Popular
+                    </span>
+                  )}
+                  <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "white" }}>{plan.name}</h3>
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <span style={{ fontSize: "2.5rem", fontWeight: 700, color: "white" }}>{plan.price}</span>
+                    <span style={{ color: "#888" }}>/month</span>
+                  </div>
+                  <p style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "#888" }}>{plan.credits}</p>
+                  <ul style={{ marginTop: "1.5rem", listStyle: "none" }}>
+                    {plan.features.map((feature) => (
+                      <li key={feature} style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "0.5rem", 
+                        fontSize: "0.875rem", 
+                        color: "#ccc",
+                        marginBottom: "0.75rem"
+                      }}>
+                        <Check size={16} color="#a855f7" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <button 
+                    className={plan.popular ? "btn-primary" : "btn-secondary"}
+                    style={{ width: "100%", marginTop: "1.5rem" }}
+                  >
+                    Get Started
+                  </button>
                 </div>
-                <p className="mt-2 text-sm text-zinc-400">{plan.credits}</p>
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm text-zinc-300">
-                      <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <button className={`mt-6 w-full rounded-lg py-2 font-medium transition ${
-                  plan.popular
-                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90"
-                    : "bg-zinc-800 text-white hover:bg-zinc-700"
-                }`}>
-                  Get Started
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-12">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500" />
-              <span className="text-xl font-bold gradient-text">Lumen Creative</span>
+        {/* Footer */}
+        <footer style={{ 
+          borderTop: "1px solid rgba(255,255,255,0.1)", 
+          padding: "2rem",
+          marginTop: "3rem"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div className="gradient-purple" style={{ width: "32px", height: "32px", borderRadius: "8px" }} />
+              <span className="gradient-text" style={{ fontWeight: 700 }}>Lumen Creative</span>
             </div>
-            <p className="text-sm text-zinc-400">
+            <p style={{ fontSize: "0.875rem", color: "#666" }}>
               © 2026 Lumen AI Solutions. All rights reserved.
             </p>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </main>
+
+      <style jsx global>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
