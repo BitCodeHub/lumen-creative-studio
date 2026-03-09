@@ -20,10 +20,22 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json();
 
+    // Derive a readable label from filename (e.g. "asian_princess_00001_.jpg" → "Asian Princess")
+    function labelFromId(id: string): string {
+      return id
+        .replace(/[_-]/g, ' ')
+        .replace(/\d{5}_?\.jpg$/i, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
     // Proxy image URLs through our API to avoid ngrok browser warning
-    const images = (data.images || []).map((img: { id: string; prompt: string; model: string; [key: string]: unknown }) => ({
+    const images = (data.images || []).map((img: { id: string; prompt?: string; model?: string; [key: string]: unknown }) => ({
       ...img,
       imageUrl: `/api/gallery/image?file=${encodeURIComponent(img.id)}`,
+      prompt: img.prompt || labelFromId(img.id as string),
+      model: img.model || 'Lumen AI',
     }));
 
     return NextResponse.json({
