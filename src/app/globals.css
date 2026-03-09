@@ -48,6 +48,7 @@ body {
 .main-content {
   margin-left: 240px;
   min-height: 100vh;
+  width: calc(100% - 240px);
   background: var(--background);
   transition: margin-left 0.2s ease;
 }
@@ -64,6 +65,7 @@ body {
   
   .main-content {
     margin-left: 0;
+    width: 100%;
   }
   
   .mobile-header {
@@ -181,6 +183,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1rem;
+  width: 100%;
   transition: all 0.15s ease;
 }
 
