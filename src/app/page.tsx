@@ -122,10 +122,10 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#fff", fontFamily: "Inter,-apple-system,sans-serif", color: "#1a1a1a" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#0f0f0f", fontFamily: "Inter,-apple-system,sans-serif", color: "#ededed" }}>
       
       {/* Left Sidebar — narrow icon rail like Dreamina */}
-      <aside style={{ width: 60, background: "#fff", borderRight: "1px solid #f0f0f0",
+      <aside style={{ width: 60, background: "#0f0f0f", borderRight: "1px solid #2a2a2a",
         display: "flex", flexDirection: "column", alignItems: "center",
         padding: "16px 0", position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 50 }}>
         {/* Logo */}
@@ -153,7 +153,7 @@ export default function HomePage() {
         ))}
         <div style={{ flex: 1 }} />
         <button title="Menu" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
-          border: "none", background: "transparent", cursor: "pointer", color: "#999" }}>
+          border: "none", background: "transparent", cursor: "pointer", color: "#888" }}>
           <AlignJustify size={18} />
         </button>
       </aside>
@@ -163,7 +163,7 @@ export default function HomePage() {
         
         {/* Heading */}
         <div style={{ textAlign: "center", padding: "36px 24px 24px" }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: "#ededed", margin: 0 }}>
             Start Creating With{" "}
             <span style={{ color: "#0066ff" }}>AI Image</span>
             <span style={{ color: "#0066ff", fontSize: 18, marginLeft: 4 }}>↓</span>
@@ -172,14 +172,14 @@ export default function HomePage() {
 
         {/* Prompt Box — exactly like Dreamina */}
         <div style={{ maxWidth: 800, margin: "0 auto", width: "100%", padding: "0 24px 24px" }}>
-          <div style={{ background: "#fff", border: "1.5px solid #e8e8e8", borderRadius: 16,
+          <div style={{ background: "#0f0f0f", border: "1.5px solid #2a2a2a", borderRadius: 16,
             boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
             
             {/* Top: image upload area + prompt */}
             <div style={{ display: "flex", gap: 12, padding: "16px 16px 12px" }}>
               {/* Image upload slot */}
               <button style={{ width: 56, height: 56, borderRadius: 10, border: "1.5px dashed #d0d0d0",
-                background: "#fafafa", display: "flex", alignItems: "center", justifyContent: "center",
+                background: "#171717", display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: "pointer", flexShrink: 0, color: "#bbb" }}>
                 <Plus size={20} />
               </button>
@@ -190,48 +190,48 @@ export default function HomePage() {
                 onKeyDown={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), generate())}
                 placeholder="Describe the image you're imagining"
                 style={{ flex: 1, border: "none", outline: "none", resize: "none", fontSize: 15,
-                  color: "#1a1a1a", background: "transparent", fontFamily: "inherit",
+                  color: "#ededed", background: "transparent", fontFamily: "inherit",
                   minHeight: 56, lineHeight: 1.5, paddingTop: 4 }} />
             </div>
 
             {/* Bottom toolbar */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "10px 16px", borderTop: "1px solid #f4f4f4" }}>
+              padding: "10px 16px", borderTop: "1px solid #222222" }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 {/* Model chip */}
                 <button onClick={() => {}} style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "5px 10px", borderRadius: 20, border: "1px solid #e0e0e0",
-                  background: "#fff", fontSize: 13, color: "#333", cursor: "pointer", fontWeight: 500 }}>
+                  padding: "5px 10px", borderRadius: 20, border: "1px solid #333333",
+                  background: "#0f0f0f", fontSize: 13, color: "#ccc", cursor: "pointer", fontWeight: 500 }}>
                   <ImageIcon size={13} color="#0066ff" />
                   {MODELS.find(m => m.id === model)?.label}
                   <ChevronDown size={12} color="#999" />
                 </button>
                 {/* Ratio chip */}
                 <button style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "5px 10px", borderRadius: 20, border: "1px solid #e0e0e0",
-                  background: "#fff", fontSize: 13, color: "#333", cursor: "pointer" }}>
+                  padding: "5px 10px", borderRadius: 20, border: "1px solid #333333",
+                  background: "#0f0f0f", fontSize: 13, color: "#ccc", cursor: "pointer" }}>
                   <div style={{ width: 13, height: 13, border: "1.5px solid #999", borderRadius: 2 }} />
                   {ratio}
                 </button>
                 {/* Quality chip */}
                 <button style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "5px 10px", borderRadius: 20, border: "1px solid #e0e0e0",
-                  background: "#fff", fontSize: 13, color: "#333", cursor: "pointer" }}>
+                  padding: "5px 10px", borderRadius: 20, border: "1px solid #333333",
+                  background: "#0f0f0f", fontSize: 13, color: "#ccc", cursor: "pointer" }}>
                   {quality}
                 </button>
                 {/* Settings */}
-                <button style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid #e0e0e0",
-                  background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", color: "#999" }}>
+                <button style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid #333333",
+                  background: "#0f0f0f", display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: "#888" }}>
                   <Settings size={13} />
                 </button>
               </div>
               {/* Credits + Submit */}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13, color: "#999" }}>✦ 0/image</span>
+                <span style={{ fontSize: 13, color: "#888" }}>✦ 0/image</span>
                 <button onClick={generate} disabled={isGenerating || !prompt.trim()}
                   style={{ width: 36, height: 36, borderRadius: "50%",
-                    background: isGenerating || !prompt.trim() ? "#e0e0e0" : "#1a1a1a",
+                    background: isGenerating || !prompt.trim() ? "#333333" : "#1a1a1a",
                     border: "none", display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer" }}>
                   {isGenerating
@@ -244,25 +244,25 @@ export default function HomePage() {
 
             {/* Progress / Error / Result */}
             {progress && (
-              <div style={{ padding: "10px 16px", borderTop: "1px solid #f4f4f4", fontSize: 13, color: "#888",
+              <div style={{ padding: "10px 16px", borderTop: "1px solid #222222", fontSize: 13, color: "#888",
                 display: "flex", alignItems: "center", gap: 8 }}>
                 <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> {progress}
               </div>
             )}
             {error && (
               <div style={{ padding: "10px 16px", borderTop: "1px solid #fee", fontSize: 13, color: "#d00",
-                background: "#fff8f8" }}>
+                background: "#1a1a1a" }}>
                 {error}
               </div>
             )}
             {generatedImage && (
-              <div style={{ padding: 16, borderTop: "1px solid #f4f4f4" }}>
+              <div style={{ padding: 16, borderTop: "1px solid #222222" }}>
                 <img src={generatedImage} alt="Generated"
                   style={{ maxWidth: "100%", borderRadius: 12, display: "block" }} />
                 <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                   <a href={generatedImage} download="generated.png"
                     style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
-                      background: "#f4f4f4", borderRadius: 20, fontSize: 13, color: "#333",
+                      background: "#222222", borderRadius: 20, fontSize: 13, color: "#ccc",
                       textDecoration: "none" }}>
                     <Download size={13} /> Download
                   </a>
@@ -274,7 +274,7 @@ export default function HomePage() {
 
         {/* Tabs: Trends / AI Shorts */}
         <div style={{ maxWidth: "100%", padding: "0 24px", marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #f0f0f0", paddingBottom: 0 }}>
+          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #2a2a2a", paddingBottom: 0 }}>
             {["trends", "shorts"].map(t => (
               <button key={t} onClick={() => setTab(t as "trends" | "shorts")}
                 style={{ padding: "8px 16px", fontSize: 14, fontWeight: tab === t ? 600 : 400,
@@ -289,6 +289,14 @@ export default function HomePage() {
 
         {/* Gallery Masonry Grid */}
         <div style={{ padding: "0 16px 60px", columns: "4 180px", gap: "8px" }}>
+          {/* Skeleton loading placeholders */}
+          {images.length === 0 && loadingGallery && Array.from({ length: 12 }).map((_, i) => (
+            <div key={`skeleton-${i}`} style={{ 
+              breakInside: "avoid", marginBottom: 8, borderRadius: 12, overflow: "hidden",
+              background: "#1a1a1a", animation: "pulse 1.5s ease-in-out infinite",
+              height: [180, 220, 200, 240, 190, 210, 250, 185, 230, 195, 215, 205][i % 12]
+            }} />
+          ))}
           {images.map(img => (
             <div key={img.id}
               style={{ breakInside: "avoid", marginBottom: 8, position: "relative",
@@ -366,10 +374,11 @@ export default function HomePage() {
 
       <style jsx global>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #fff; }
+        body { background: #0f0f0f; }
         ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
         @media (max-width: 640px) {
           aside { width: 48px !important; }
           main { margin-left: 48px !important; }
