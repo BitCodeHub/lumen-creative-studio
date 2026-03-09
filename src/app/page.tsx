@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { 
-  Compass, Diamond, Archive, AlignJustify, Upload, ChevronDown,
+  Compass, Diamond, Archive, AlignJustify, ChevronDown,
   Loader2, Download, Heart, Copy, RefreshCw, Check, Sparkles,
-  Image as ImageIcon, Settings, Plus
+  Image as ImageIcon, Settings, Plus, Wand2
 } from "lucide-react";
-
-const GALLERY_BASE = "https://lumen-gallery.ngrok.app";
 
 interface GalleryImage {
   id: string;
@@ -23,57 +21,67 @@ const MODELS = [
   { id: "sdxl", label: "SDXL" },
 ];
 
-const RATIOS = ["Auto ratio", "1:1", "4:3", "16:9", "9:16", "3:4"];
-const QUALITIES = ["Standard", "High (2K)", "Ultra (4K)"];
-
 export default function HomePage() {
-  const [tab, setTab] = useState<"trends" | "shorts">("trends");
+  const [activeNav, setActiveNav] = useState<"explore" | "create">("explore");
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("realvis");
-  const [ratio, setRatio] = useState("Auto ratio");
-  const [quality, setQuality] = useState("High (2K)");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
-  const [showGenerator, setShowGenerator] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [hovered, setHovered] = useState<string | null>(null);
+  const [tab, setTab] = useState<"trends" | "shorts">("trends");
 
-  // Gallery
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingGallery, setLoadingGallery] = useState(false);
+  const [galleryError, setGalleryError] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const pageRef = useRef(1);
+  const fetchingRef = useRef(false);
 
-  const fetchGallery = useCallback(async (p: number) => {
+  const fetchGallery = useCallback(async (p: number, reset = false) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoadingGallery(true);
+    setGalleryError(false);
     try {
-      const res = await fetch(`/api/gallery?page=${p}&limit=24`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(`/api/gallery?page=${p}&limit=24`, { signal: controller.signal });
+      clearTimeout(timeout);
       const data = await res.json();
-      setImages(prev => p === 1 ? data.images : [...prev, ...data.images]);
-      setHasMore(data.hasMore);
-    } catch { /* ignore */ }
+      if (reset || p === 1) {
+        setImages(data.images || []);
+      } else {
+        setImages(prev => [...prev, ...(data.images || [])]);
+      }
+      setHasMore(data.hasMore ?? false);
+      setPage(p);
+      pageRef.current = p;
+    } catch {
+      setGalleryError(true);
+    }
     setLoadingGallery(false);
+    fetchingRef.current = false;
   }, []);
 
-  useEffect(() => { fetchGallery(1); }, [fetchGallery]);
+  useEffect(() => { fetchGallery(1, true); }, []); // eslint-disable-line
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore && !loadingGallery) {
-        const next = page + 1;
-        setPage(next);
-        fetchGallery(next);
+      if (entries[0].isIntersecting && hasMore && !fetchingRef.current) {
+        fetchGallery(pageRef.current + 1);
       }
-    }, { rootMargin: "500px" });
+    }, { rootMargin: "600px" });
     if (loaderRef.current) observerRef.current.observe(loaderRef.current);
     return () => observerRef.current?.disconnect();
-  }, [hasMore, loadingGallery, page, fetchGallery]);
+  }, [hasMore, fetchGallery]);
 
   const generate = async () => {
     if (!prompt.trim()) return;
@@ -81,6 +89,7 @@ export default function HomePage() {
     setError("");
     setGeneratedImage(null);
     setProgress("Submitting...");
+    setActiveNav("create");
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -88,7 +97,7 @@ export default function HomePage() {
         body: JSON.stringify({ prompt, model }),
       });
       const { promptId, error: err } = await res.json();
-      if (err || !promptId) { setError(err || "Failed"); setIsGenerating(false); return; }
+      if (err || !promptId) { setError(err || "Failed to start"); setIsGenerating(false); return; }
       setProgress("Generating...");
       const start = Date.now();
       while (Date.now() - start < 600000) {
@@ -100,295 +109,336 @@ export default function HomePage() {
           setProgress("");
           return;
         }
-        if (poll.status === "error") { setError("Generation failed"); setIsGenerating(false); return; }
+        if (poll.status === "error") { setError("Generation failed. Try again."); setIsGenerating(false); return; }
         setProgress(`Generating... ${Math.round((Date.now()-start)/1000)}s`);
       }
-      setError("Timed out");
-    } catch { setError("Unavailable"); }
-    setIsGenerating(false);
-    setProgress("");
+      setError("Timed out — try FLUX Schnell for faster results");
+    } catch { setError("AI temporarily unavailable. Please try again."); }
+    setIsGenerating(false); setProgress("");
   };
 
   const copyPrompt = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(id);
-    setTimeout(() => setCopied(null), 1800);
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(id); setTimeout(() => setCopied(null), 1800);
   };
 
   const remix = (img: GalleryImage) => {
-    setPrompt(img.prompt);
-    setShowGenerator(true);
+    setPrompt(img.prompt); setActiveNav("create");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const toggleLike = (id: string) => {
+    setLiked(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  };
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#0f0f0f", fontFamily: "Inter,-apple-system,sans-serif", color: "#ededed" }}>
-      
-      {/* Left Sidebar — narrow icon rail like Dreamina */}
-      <aside style={{ width: 60, background: "#0f0f0f", borderRight: "1px solid #2a2a2a",
+    <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0a",
+      fontFamily: "Inter,-apple-system,BlinkMacSystemFont,sans-serif", color: "#fff" }}>
+
+      {/* Sidebar */}
+      <aside style={{ width: 64, background: "#111", borderRight: "1px solid #1c1c1c",
         display: "flex", flexDirection: "column", alignItems: "center",
-        padding: "16px 0", position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 50 }}>
-        {/* Logo */}
-        <div style={{ width: 32, height: 32, marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #0066ff, #00aaff)",
-            display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Sparkles size={14} color="white" />
-          </div>
+        padding: "14px 0", position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 50 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10,
+          background: "linear-gradient(135deg, #0066ff, #00aaff)",
+          display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <Sparkles size={17} color="white" />
         </div>
-        {/* Nav icons */}
-        {[
-          { icon: Compass, label: "Explore", active: !showGenerator, onClick: () => setShowGenerator(false) },
-          { icon: Diamond, label: "Create", active: showGenerator, onClick: () => setShowGenerator(true) },
-          { icon: Archive, label: "Assets", active: false, onClick: () => {} },
-        ].map(item => (
-          <button key={item.label} onClick={item.onClick}
-            title={item.label}
-            style={{ width: 44, height: 52, display: "flex", flexDirection: "column", alignItems: "center",
-              justifyContent: "center", gap: 4, border: "none", background: "transparent",
-              cursor: "pointer", borderRadius: 8, marginBottom: 4,
-              color: item.active ? "#0066ff" : "#999" }}>
-            <item.icon size={20} />
-            <span style={{ fontSize: 10, fontWeight: 500 }}>{item.label}</span>
-          </button>
-        ))}
+        {(["explore", "create"] as const).map(nav => {
+          const Icon = nav === "explore" ? Compass : Diamond;
+          return (
+            <button key={nav} onClick={() => setActiveNav(nav)} title={nav}
+              style={{ width: 52, height: 52, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: 3,
+                border: "none", borderRadius: 10,
+                background: activeNav === nav ? "rgba(0,102,255,0.15)" : "transparent",
+                cursor: "pointer", color: activeNav === nav ? "#4d9fff" : "#555",
+                textTransform: "capitalize" }}>
+              <Icon size={19} />
+              <span style={{ fontSize: 9.5, fontWeight: 500 }}>{nav.charAt(0).toUpperCase()+nav.slice(1)}</span>
+            </button>
+          );
+        })}
+        <button title="Assets" style={{ width: 52, height: 52, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 3,
+          border: "none", borderRadius: 10, background: "transparent", cursor: "pointer", color: "#444" }}>
+          <Archive size={19} />
+          <span style={{ fontSize: 9.5, fontWeight: 500 }}>Assets</span>
+        </button>
         <div style={{ flex: 1 }} />
-        <button title="Menu" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
-          border: "none", background: "transparent", cursor: "pointer", color: "#888" }}>
-          <AlignJustify size={18} />
+        <button style={{ width: 52, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+          border: "none", background: "transparent", cursor: "pointer", color: "#444" }}>
+          <AlignJustify size={17} />
         </button>
       </aside>
 
       {/* Main */}
-      <main style={{ marginLeft: 60, flex: 1, display: "flex", flexDirection: "column" }}>
-        
-        {/* Heading */}
-        <div style={{ textAlign: "center", padding: "36px 24px 24px" }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: "#ededed", margin: 0 }}>
-            Start Creating With{" "}
-            <span style={{ color: "#0066ff" }}>AI Image</span>
-            <span style={{ color: "#0066ff", fontSize: 18, marginLeft: 4 }}>↓</span>
-          </h1>
-        </div>
+      <main style={{ marginLeft: 64, flex: 1 }}>
 
-        {/* Prompt Box — exactly like Dreamina */}
-        <div style={{ maxWidth: 800, margin: "0 auto", width: "100%", padding: "0 24px 24px" }}>
-          <div style={{ background: "#0f0f0f", border: "1.5px solid #2a2a2a", borderRadius: 16,
-            boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
-            
-            {/* Top: image upload area + prompt */}
-            <div style={{ display: "flex", gap: 12, padding: "16px 16px 12px" }}>
-              {/* Image upload slot */}
-              <button style={{ width: 56, height: 56, borderRadius: 10, border: "1.5px dashed #d0d0d0",
-                background: "#171717", display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", flexShrink: 0, color: "#bbb" }}>
-                <Plus size={20} />
-              </button>
-              {/* Prompt textarea */}
-              <textarea
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), generate())}
-                placeholder="Describe the image you're imagining"
-                style={{ flex: 1, border: "none", outline: "none", resize: "none", fontSize: 15,
-                  color: "#ededed", background: "transparent", fontFamily: "inherit",
-                  minHeight: 56, lineHeight: 1.5, paddingTop: 4 }} />
+        {activeNav === "explore" && (
+          <>
+            <div style={{ textAlign: "center", padding: "32px 24px 20px" }}>
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: -0.3 }}>
+                Start Creating With <span style={{ color: "#4d9fff" }}>AI Image</span>
+                <span style={{ color: "#4d9fff", marginLeft: 3 }}>↓</span>
+              </h1>
             </div>
 
-            {/* Bottom toolbar */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "10px 16px", borderTop: "1px solid #222222" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                {/* Model chip */}
-                <button onClick={() => {}} style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "5px 10px", borderRadius: 20, border: "1px solid #333333",
-                  background: "#0f0f0f", fontSize: 13, color: "#ccc", cursor: "pointer", fontWeight: 500 }}>
-                  <ImageIcon size={13} color="#0066ff" />
-                  {MODELS.find(m => m.id === model)?.label}
-                  <ChevronDown size={12} color="#999" />
-                </button>
-                {/* Ratio chip */}
-                <button style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "5px 10px", borderRadius: 20, border: "1px solid #333333",
-                  background: "#0f0f0f", fontSize: 13, color: "#ccc", cursor: "pointer" }}>
-                  <div style={{ width: 13, height: 13, border: "1.5px solid #999", borderRadius: 2 }} />
-                  {ratio}
-                </button>
-                {/* Quality chip */}
-                <button style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "5px 10px", borderRadius: 20, border: "1px solid #333333",
-                  background: "#0f0f0f", fontSize: 13, color: "#ccc", cursor: "pointer" }}>
-                  {quality}
-                </button>
-                {/* Settings */}
-                <button style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid #333333",
-                  background: "#0f0f0f", display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", color: "#888" }}>
-                  <Settings size={13} />
-                </button>
-              </div>
-              {/* Credits + Submit */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13, color: "#888" }}>✦ 0/image</span>
-                <button onClick={generate} disabled={isGenerating || !prompt.trim()}
-                  style={{ width: 36, height: 36, borderRadius: "50%",
-                    background: isGenerating || !prompt.trim() ? "#333333" : "#1a1a1a",
-                    border: "none", display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer" }}>
-                  {isGenerating
-                    ? <Loader2 size={16} color="white" style={{ animation: "spin 1s linear infinite" }} />
-                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  }
-                </button>
+            {/* Prompt box */}
+            <div style={{ maxWidth: 720, margin: "0 auto", width: "100%", padding: "0 20px 20px" }}>
+              <div style={{ background: "#161616", border: "1.5px solid #2a2a2a", borderRadius: 16,
+                boxShadow: "0 4px 24px rgba(0,0,0,0.35)" }}>
+                <div style={{ display: "flex", gap: 12, padding: "14px 14px 10px" }}>
+                  <button style={{ width: 52, height: 52, borderRadius: 10, border: "1.5px dashed #333",
+                    background: "#1e1e1e", display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", flexShrink: 0, color: "#555" }}>
+                    <Plus size={18} />
+                  </button>
+                  <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }}}
+                    placeholder="Describe the image you're imagining"
+                    style={{ flex: 1, border: "none", outline: "none", resize: "none", fontSize: 14.5,
+                      color: "#ddd", background: "transparent", fontFamily: "inherit",
+                      minHeight: 52, lineHeight: 1.5, paddingTop: 2 }} />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "8px 14px 12px", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
+                      borderRadius: 20, border: "1px solid #2a2a2a", background: "#1e1e1e",
+                      fontSize: 12.5, color: "#bbb", cursor: "pointer", fontWeight: 500 }}>
+                      <ImageIcon size={12} color="#4d9fff" />
+                      {MODELS.find(m => m.id === model)?.label}
+                      <ChevronDown size={11} color="#555" />
+                    </button>
+                    <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
+                      borderRadius: 20, border: "1px solid #2a2a2a", background: "#1e1e1e",
+                      fontSize: 12.5, color: "#bbb", cursor: "pointer" }}>
+                      <div style={{ width: 12, height: 12, border: "1.5px solid #555", borderRadius: 2 }} />
+                      Auto ratio
+                    </button>
+                    <button style={{ padding: "5px 10px", borderRadius: 20, border: "1px solid #2a2a2a",
+                      background: "#1e1e1e", fontSize: 12.5, color: "#bbb", cursor: "pointer" }}>
+                      High (2K)
+                    </button>
+                    <button style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #2a2a2a",
+                      background: "#1e1e1e", display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", color: "#555" }}>
+                      <Settings size={12} />
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, color: "#444" }}>✦ 0/image</span>
+                    <button onClick={generate} disabled={isGenerating || !prompt.trim()}
+                      style={{ width: 34, height: 34, borderRadius: "50%",
+                        background: isGenerating || !prompt.trim() ? "#222" : "#0066ff",
+                        border: "none", display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer", transition: "background 0.15s" }}>
+                      {isGenerating
+                        ? <Loader2 size={15} color="#555" style={{ animation: "spin 1s linear infinite" }} />
+                        : <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+                {progress && <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #1e1e1e",
+                  fontSize: 12.5, color: "#666", display: "flex", gap: 7, alignItems: "center" }}>
+                  <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> {progress}
+                </div>}
+                {error && <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #2a1515",
+                  fontSize: 12.5, color: "#ff6b6b" }}>{error}</div>}
               </div>
             </div>
 
-            {/* Progress / Error / Result */}
-            {progress && (
-              <div style={{ padding: "10px 16px", borderTop: "1px solid #222222", fontSize: 13, color: "#888",
-                display: "flex", alignItems: "center", gap: 8 }}>
-                <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> {progress}
+            {/* Tabs */}
+            <div style={{ padding: "0 20px 0", borderBottom: "1px solid #181818" }}>
+              <div style={{ display: "flex" }}>
+                {(["trends", "shorts"] as const).map(t => (
+                  <button key={t} onClick={() => setTab(t)}
+                    style={{ padding: "8px 16px", fontSize: 13.5,
+                      fontWeight: tab === t ? 600 : 400,
+                      color: tab === t ? "#fff" : "#555", background: "transparent", border: "none",
+                      cursor: "pointer",
+                      borderBottom: tab === t ? "2px solid #4d9fff" : "2px solid transparent" }}>
+                    {t === "trends" ? "Trends" : "AI Shorts"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gallery */}
+            {galleryError && images.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#444" }}>
+                <p style={{ marginBottom: 12, fontSize: 14 }}>Gallery temporarily unavailable</p>
+                <button onClick={() => fetchGallery(1, true)}
+                  style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #333",
+                    background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div style={{ padding: "14px 14px 60px", columns: "4 170px", gap: "8px" }}>
+                {/* Skeleton placeholders while loading */}
+                {loadingGallery && images.length === 0 && Array.from({ length: 16 }).map((_, i) => (
+                  <div key={`sk-${i}`} style={{ breakInside: "avoid", marginBottom: 8,
+                    borderRadius: 10, background: "#161616",
+                    height: [220,300,180,260,200,340,220,280,190,310,240,170,250,320,200,280][i],
+                    animation: "pulse 1.6s ease-in-out infinite" }} />
+                ))}
+                {images.map(img => (
+                  <div key={img.id}
+                    style={{ breakInside: "avoid", marginBottom: 8, position: "relative",
+                      borderRadius: 10, overflow: "hidden", cursor: "pointer", background: "#161616" }}
+                    onMouseEnter={() => setHovered(img.id)}
+                    onMouseLeave={() => setHovered(null)}>
+                    <img src={img.imageUrl} alt={img.prompt.slice(0, 60)} loading="lazy"
+                      style={{ width: "100%", display: "block", borderRadius: 10,
+                        transition: "transform 0.25s ease",
+                        transform: hovered === img.id ? "scale(1.03)" : "scale(1)" }}
+                      onError={e => { (e.target as HTMLImageElement).closest('div')!.style.display = "none"; }}
+                    />
+                    {hovered === img.id && (
+                      <div style={{ position: "absolute", inset: 0, borderRadius: 10,
+                        background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 45%, transparent 70%)",
+                        display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 10 }}>
+                        <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 11.5, lineHeight: 1.45,
+                          marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {img.prompt}
+                        </p>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(6px)",
+                            borderRadius: 10, padding: "2px 7px", fontSize: 10.5, color: "rgba(255,255,255,0.8)" }}>
+                            {img.model}
+                          </span>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button onClick={e => { e.stopPropagation(); toggleLike(img.id); }}
+                              style={{ width: 27, height: 27, borderRadius: "50%", border: "none",
+                                background: "rgba(255,255,255,0.15)", backdropFilter: "blur(6px)",
+                                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Heart size={12} color="white" fill={liked.has(img.id) ? "white" : "none"} />
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); copyPrompt(img.id, img.prompt); }}
+                              style={{ width: 27, height: 27, borderRadius: "50%", border: "none",
+                                background: "rgba(255,255,255,0.15)", backdropFilter: "blur(6px)",
+                                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {copied === img.id ? <Check size={12} color="#4dff91" /> : <Copy size={12} color="white" />}
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); remix(img); }}
+                              style={{ display: "flex", alignItems: "center", gap: 3, padding: "0 8px",
+                                height: 27, borderRadius: 13, border: "none",
+                                background: "rgba(77,159,255,0.25)", backdropFilter: "blur(6px)",
+                                cursor: "pointer", color: "#9dd0ff", fontSize: 11, fontWeight: 600 }}>
+                              <RefreshCw size={10} /> Remix
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-            {error && (
-              <div style={{ padding: "10px 16px", borderTop: "1px solid #fee", fontSize: 13, color: "#d00",
-                background: "#1a1a1a" }}>
-                {error}
-              </div>
-            )}
-            {generatedImage && (
-              <div style={{ padding: 16, borderTop: "1px solid #222222" }}>
-                <img src={generatedImage} alt="Generated"
-                  style={{ maxWidth: "100%", borderRadius: 12, display: "block" }} />
-                <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                  <a href={generatedImage} download="generated.png"
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
-                      background: "#222222", borderRadius: 20, fontSize: 13, color: "#ccc",
-                      textDecoration: "none" }}>
-                    <Download size={13} /> Download
-                  </a>
+            <div ref={loaderRef} style={{ height: 50, display: "flex", alignItems: "center",
+              justifyContent: "center", color: "#333", fontSize: 12 }}>
+              {loadingGallery && images.length > 0 && <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />}
+              {!hasMore && images.length > 0 && "✦ All caught up ✦"}
+            </div>
+          </>
+        )}
+
+        {activeNav === "create" && (
+          <div style={{ maxWidth: 700, margin: "0 auto", width: "100%", padding: "40px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+              <Wand2 size={18} color="#4d9fff" />
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: 0 }}>AI Generator</h1>
+            </div>
+            <div style={{ background: "#111", border: "1px solid #1c1c1c", borderRadius: 14, padding: 20 }}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 11, color: "#555", marginBottom: 8,
+                  fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Model</label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {MODELS.map(m => (
+                    <button key={m.id} onClick={() => setModel(m.id)}
+                      style={{ padding: "6px 14px", borderRadius: 8,
+                        border: model === m.id ? "1.5px solid #0066ff" : "1.5px solid #1e1e1e",
+                        background: model === m.id ? "rgba(0,102,255,0.1)" : "#161616",
+                        color: model === m.id ? "#4d9fff" : "#555",
+                        fontSize: 13, cursor: "pointer", fontWeight: 500 }}>
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Tabs: Trends / AI Shorts */}
-        <div style={{ maxWidth: "100%", padding: "0 24px", marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #2a2a2a", paddingBottom: 0 }}>
-            {["trends", "shorts"].map(t => (
-              <button key={t} onClick={() => setTab(t as "trends" | "shorts")}
-                style={{ padding: "8px 16px", fontSize: 14, fontWeight: tab === t ? 600 : 400,
-                  color: tab === t ? "#1a1a1a" : "#999", background: "transparent", border: "none",
-                  cursor: "pointer", borderBottom: tab === t ? "2px solid #1a1a1a" : "2px solid transparent",
-                  marginBottom: -1 }}>
-                {t === "trends" ? "Trends" : "AI Shorts"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Gallery Masonry Grid */}
-        <div style={{ padding: "0 16px 60px", columns: "4 180px", gap: "8px" }}>
-          {/* Skeleton loading placeholders */}
-          {images.length === 0 && loadingGallery && Array.from({ length: 12 }).map((_, i) => (
-            <div key={`skeleton-${i}`} style={{ 
-              breakInside: "avoid", marginBottom: 8, borderRadius: 12, overflow: "hidden",
-              background: "#1a1a1a", animation: "pulse 1.5s ease-in-out infinite",
-              height: [180, 220, 200, 240, 190, 210, 250, 185, 230, 195, 215, 205][i % 12]
-            }} />
-          ))}
-          {images.map(img => (
-            <div key={img.id}
-              style={{ breakInside: "avoid", marginBottom: 8, position: "relative",
-                borderRadius: 12, overflow: "hidden", cursor: "pointer" }}
-              onMouseEnter={() => setHovered(img.id)}
-              onMouseLeave={() => setHovered(null)}>
-              
-              <img
-                src={img.imageUrl}
-                alt={img.prompt.slice(0, 60)}
-                loading="lazy"
-                style={{ width: "100%", display: "block", borderRadius: 12,
-                  transition: "transform 0.2s",
-                  transform: hovered === img.id ? "scale(1.02)" : "scale(1)" }}
-                onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }}
-              />
-
-              {/* Hover overlay */}
-              {hovered === img.id && (
-                <div style={{ position: "absolute", inset: 0, borderRadius: 12,
-                  background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 40%, transparent 65%)",
-                  display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 10 }}>
-                  
-                  {/* Prompt */}
-                  <p style={{ color: "rgba(255,255,255,0.92)", fontSize: 12, lineHeight: 1.45,
-                    marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {img.prompt}
-                  </p>
-
-                  {/* Actions */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)",
-                      borderRadius: 12, padding: "2px 8px", fontSize: 11, color: "rgba(255,255,255,0.9)" }}>
-                      {img.model}
-                    </span>
-                    <div style={{ display: "flex", gap: 5 }}>
-                      <button onClick={e => { e.stopPropagation(); toggleLike(img.id); }}
-                        title="Like"
-                        style={{ width: 28, height: 28, borderRadius: "50%", border: "none",
-                          background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Heart size={12} color="white" fill={liked.has(img.id) ? "white" : "none"} />
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); copyPrompt(img.id, img.prompt); }}
-                        title="Copy prompt"
-                        style={{ width: 28, height: 28, borderRadius: "50%", border: "none",
-                          background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {copied === img.id ? <Check size={12} color="white" /> : <Copy size={12} color="white" />}
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); remix(img); }}
-                        title="Remix"
-                        style={{ display: "flex", alignItems: "center", gap: 3,
-                          padding: "0 8px", height: 28, borderRadius: 14, border: "none",
-                          background: "rgba(255,255,255,0.25)", backdropFilter: "blur(4px)",
-                          cursor: "pointer", color: "white", fontSize: 11, fontWeight: 600 }}>
-                        <RefreshCw size={10} /> Remix
-                      </button>
-                    </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 11, color: "#555", marginBottom: 8,
+                  fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Prompt</label>
+                <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && e.metaKey && generate()}
+                  placeholder="Describe what you want to create in detail..."
+                  style={{ width: "100%", minHeight: 110, resize: "vertical", background: "#161616",
+                    border: "1px solid #1e1e1e", borderRadius: 10, padding: "10px 12px", color: "#ddd",
+                    fontSize: 14, outline: "none", fontFamily: "inherit", lineHeight: 1.55 }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={generate} disabled={isGenerating || !prompt.trim()}
+                  style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 22px",
+                    background: isGenerating || !prompt.trim() ? "#1a1a1a" : "#0066ff",
+                    border: "none", borderRadius: 10,
+                    color: isGenerating || !prompt.trim() ? "#444" : "white",
+                    fontWeight: 600, fontSize: 14, cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer" }}>
+                  {isGenerating
+                    ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Generating...</>
+                    : <><Sparkles size={14} /> Generate</>}
+                </button>
+              </div>
+              {progress && <div style={{ marginTop: 12, padding: "8px 12px", background: "#161616",
+                borderRadius: 8, fontSize: 13, color: "#666", display: "flex", gap: 8, alignItems: "center" }}>
+                <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> {progress}
+              </div>}
+              {error && <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(255,59,48,0.07)",
+                borderRadius: 8, fontSize: 13, color: "#ff6b6b", border: "1px solid rgba(255,59,48,0.12)" }}>
+                {error}
+              </div>}
+              {generatedImage && (
+                <div style={{ marginTop: 16 }}>
+                  <img src={generatedImage} alt="Generated"
+                    style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid #1e1e1e" }} />
+                  <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                    <a href={generatedImage} download="generated.png"
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px",
+                        background: "#161616", border: "1px solid #2a2a2a", borderRadius: 8,
+                        color: "#bbb", textDecoration: "none", fontSize: 13 }}>
+                      <Download size={13} /> Download
+                    </a>
+                    <button onClick={() => setActiveNav("explore")}
+                      style={{ padding: "7px 14px", background: "transparent", border: "1px solid #1e1e1e",
+                        borderRadius: 8, color: "#555", fontSize: 13, cursor: "pointer" }}>
+                      ← Explore
+                    </button>
                   </div>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-
-        {/* Infinite scroll trigger */}
-        <div ref={loaderRef} style={{ height: 60, display: "flex", alignItems: "center",
-          justifyContent: "center", color: "#bbb", fontSize: 13 }}>
-          {loadingGallery && <><Loader2 size={15} style={{ animation: "spin 1s linear infinite", marginRight: 6 }} /> Loading...</>}
-          {!hasMore && images.length > 0 && "✦ You've seen it all ✦"}
-        </div>
+          </div>
+        )}
       </main>
 
       <style jsx global>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
+        @keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 0.6; } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0f0f0f; }
+        html, body { background: #0a0a0a; }
         ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+        textarea::placeholder { color: #444; }
         @media (max-width: 640px) {
-          aside { width: 48px !important; }
-          main { margin-left: 48px !important; }
-          div[style*="columns: 4"] { columns: 2 140px !important; }
+          aside { width: 52px !important; }
+          main { margin-left: 52px !important; }
+          div[style*='columns: 4'] { columns: 2 130px !important; }
         }
       `}</style>
     </div>
   );
-
-  function toggleLike(id: string) {
-    setLiked(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-  }
 }
