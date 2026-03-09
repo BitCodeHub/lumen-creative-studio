@@ -20,10 +20,15 @@ import {
   Loader2,
   Download,
   Menu,
-  X
+  X,
+  Plus,
+  Grid,
+  Compass
 } from "lucide-react";
+import GalleryWall from "@/components/GalleryWall";
 
 const tools = [
+  { id: "explore", name: "Explore", icon: Compass },
   { id: "image-generator", name: "Image Generator", icon: Sparkles },
   { id: "video-generator", name: "Video Generator", icon: Video },
   { id: "interior-design", name: "Interior Design", icon: Home },
@@ -37,6 +42,7 @@ const tools = [
 ];
 
 const toolDescriptions: Record<string, string> = {
+  "explore": "Get inspired by community creations",
   "image-generator": "Generate images from text using FLUX.1-dev with 4x upscaling",
   "video-generator": "Transform images into videos with LTX Video AI",
   "interior-design": "Redesign rooms with AI-powered visualization",
@@ -59,12 +65,13 @@ const models = [
 export default function HomePage() {
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState("flux-dev");
-  const [selectedTool, setSelectedTool] = useState("image-generator");
+  const [selectedTool, setSelectedTool] = useState("explore"); // Default to explore
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -90,6 +97,17 @@ export default function HomePage() {
       if (response.ok && data.imageUrl) {
         setProgress("");
         setGeneratedImage(data.imageUrl);
+        
+        // Save to gallery
+        await fetch("/api/gallery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageUrl: data.imageUrl,
+            prompt,
+            model: models.find(m => m.id === selectedModel)?.name || selectedModel
+          })
+        });
       } else {
         setError(data.error || "Generation failed");
         setProgress("");
@@ -100,6 +118,12 @@ export default function HomePage() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleRemix = (remixPrompt: string) => {
+    setPrompt(remixPrompt);
+    setSelectedTool("image-generator");
+    setShowCreateModal(false);
   };
 
   const activeTool = tools.find(t => t.id === selectedTool);
@@ -145,14 +169,50 @@ export default function HomePage() {
           </span>
         </div>
 
+        {/* Create Button */}
+        <div style={{ padding: "0.75rem 0.5rem" }}>
+          <button
+            onClick={() => {
+              setSelectedTool("image-generator");
+              setSidebarOpen(false);
+            }}
+            className="btn-primary"
+            style={{ 
+              width: "100%", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center",
+              gap: "0.5rem",
+              padding: "0.625rem 1rem"
+            }}
+          >
+            <Plus size={16} />
+            Create
+          </button>
+        </div>
+
         {/* Nav Items */}
-        <nav style={{ padding: "0.75rem 0.5rem", flex: 1 }}>
+        <nav style={{ padding: "0.25rem 0.5rem", flex: 1 }}>
           <div style={{ marginBottom: "0.375rem", padding: "0 0.75rem" }}>
+            <span style={{ fontSize: "0.6875rem", color: "#737373", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Discover
+            </span>
+          </div>
+          <button
+            onClick={() => { setSelectedTool("explore"); setSidebarOpen(false); }}
+            className={`nav-item ${selectedTool === "explore" ? "active" : ""}`}
+            style={{ width: "100%", border: "none", cursor: "pointer", marginBottom: "1px" }}
+          >
+            <Compass size={16} color={selectedTool === "explore" ? "#ededed" : "#737373"} />
+            <span>Explore</span>
+          </button>
+
+          <div style={{ marginTop: "1rem", marginBottom: "0.375rem", padding: "0 0.75rem" }}>
             <span style={{ fontSize: "0.6875rem", color: "#737373", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Tools
             </span>
           </div>
-          {tools.map((tool) => (
+          {tools.filter(t => t.id !== "explore").map((tool) => (
             <button
               key={tool.id}
               onClick={() => { setSelectedTool(tool.id); setSidebarOpen(false); }}
@@ -216,8 +276,8 @@ export default function HomePage() {
               <Search size={16} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#737373" }} />
               <input 
                 className="input" 
-                placeholder="Search..." 
-                style={{ width: "240px", paddingLeft: "34px", background: "#171717", maxWidth: "100%" }}
+                placeholder="Search prompts..." 
+                style={{ width: "280px", paddingLeft: "34px", background: "#171717", maxWidth: "100%" }}
               />
             </div>
           </div>
@@ -225,248 +285,203 @@ export default function HomePage() {
             <button className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "0.375rem" }}>
               <Bell size={18} />
             </button>
-            <button className="btn-primary">
-              Upgrade
+            <button 
+              onClick={() => setSelectedTool("image-generator")}
+              className="btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}
+            >
+              <Plus size={16} />
+              Create
             </button>
           </div>
         </header>
 
         {/* Content Area */}
         <div style={{ padding: "1.5rem 2rem", width: "100%" }}>
-          {/* Tool Header */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "#ededed", marginBottom: "0.25rem" }}>
-              {activeTool?.name || "AI Creative Studio"}
-            </h1>
-            <p style={{ color: "#737373", fontSize: "0.875rem" }}>
-              {toolDescriptions[selectedTool]}
-            </p>
-          </div>
+          
+          {/* Explore / Gallery View */}
+          {selectedTool === "explore" && (
+            <GalleryWall onRemix={handleRemix} />
+          )}
 
-          {/* Generation Panel */}
-          <div className="tool-card" style={{ marginBottom: "1.5rem" }}>
-            {/* Model Selection */}
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", fontSize: "0.8125rem", color: "#737373", marginBottom: "0.5rem", fontWeight: 500 }}>
-                Model
-              </label>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                {models.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => setSelectedModel(model.id)}
-                    className={`model-btn ${selectedModel === model.id ? "active" : ""}`}
-                    title={`Quality: ${model.quality} | Est. time: ${model.time}`}
-                    style={{ flexDirection: "column", alignItems: "flex-start", padding: "0.5rem 0.75rem" }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                      {model.name}
-                      <span style={{ opacity: 0.6 }}>{model.tag}</span>
-                    </div>
-                    <div style={{ fontSize: "0.6875rem", opacity: 0.5, marginTop: "0.125rem" }}>
-                      {model.quality} · {model.time}
-                    </div>
-                  </button>
-                ))}
+          {/* Image Generator View */}
+          {selectedTool === "image-generator" && (
+            <>
+              {/* Tool Header */}
+              <div style={{ marginBottom: "1.5rem" }}>
+                <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "#ededed", marginBottom: "0.25rem" }}>
+                  {activeTool?.name || "AI Creative Studio"}
+                </h1>
+                <p style={{ color: "#737373", fontSize: "0.875rem" }}>
+                  {toolDescriptions[selectedTool]}
+                </p>
               </div>
-            </div>
 
-            {/* Prompt Input */}
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", fontSize: "0.8125rem", color: "#737373", marginBottom: "0.5rem", fontWeight: 500 }}>
-                Prompt
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe what you want to create in detail...&#10;&#10;Example: A photorealistic portrait of a woman with flowing red hair, soft studio lighting, 8k quality"
-                  className="input"
-                  style={{ 
-                    width: "100%", 
-                    minHeight: "120px", 
-                    resize: "vertical",
-                    fontFamily: "inherit",
-                    lineHeight: "1.5"
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && e.metaKey && handleGenerate()}
-                />
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.75rem", color: "#525252" }}>
-                    Press ⌘+Enter to generate
-                  </span>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating || !prompt.trim()}
-                    className="btn-primary"
-                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", whiteSpace: "nowrap" }}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={16} />
-                        Generate
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Settings Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", fontSize: "0.8125rem", color: "#737373" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                <Check size={14} color="#0066ff" />
-                4x Upscale enabled
-              </span>
-            </div>
-
-            {/* Progress */}
-            {progress && (
-              <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#171717", borderRadius: "0.375rem", fontSize: "0.875rem", color: "#737373" }}>
-                {progress}
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div style={{ marginTop: "1rem", padding: "0.75rem", background: "rgba(255, 59, 48, 0.1)", borderRadius: "0.375rem", fontSize: "0.875rem", color: "#ff3b30", border: "1px solid rgba(255, 59, 48, 0.2)" }}>
-                {error}
-              </div>
-            )}
-
-            {/* Generated Image */}
-            {generatedImage && (
-              <div style={{ marginTop: "1rem" }}>
-                <div style={{ position: "relative", display: "inline-block" }}>
-                  <img
-                    src={generatedImage}
-                    alt="Generated"
-                    style={{ 
-                      maxWidth: "100%", 
-                      maxHeight: "512px",
-                      borderRadius: "0.5rem",
-                      border: "1px solid #2a2a2a"
-                    }}
-                  />
-                  <div style={{ 
-                    position: "absolute", 
-                    bottom: "0.75rem", 
-                    right: "0.75rem", 
-                    display: "flex", 
-                    gap: "0.5rem" 
-                  }}>
-                    <a 
-                      href={generatedImage} 
-                      download="generated.png"
-                      className="btn-secondary"
-                      style={{ padding: "0.5rem", display: "flex", alignItems: "center", gap: "0.375rem" }}
-                    >
-                      <Download size={14} />
-                      Download
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* All Tools Grid */}
-          <div style={{ marginBottom: "2rem" }}>
-            <h2 style={{ fontSize: "0.875rem", fontWeight: 600, marginBottom: "0.75rem", color: "#ededed" }}>
-              All Tools
-            </h2>
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", 
-              gap: "0.75rem" 
-            }}>
-              {tools.map((tool) => (
-                <button
-                  key={tool.id}
-                  onClick={() => setSelectedTool(tool.id)}
-                  className="tool-card"
-                  style={{ 
-                    border: selectedTool === tool.id ? "1px solid #0066ff" : "1px solid #2a2a2a",
-                    cursor: "pointer",
-                    textAlign: "left"
-                  }}
-                >
-                  <div className="icon-wrap" style={{ marginBottom: "0.5rem" }}>
-                    <tool.icon size={14} color="#ededed" />
-                  </div>
-                  <h3 style={{ fontWeight: 500, color: "#ededed", fontSize: "0.8125rem" }}>
-                    {tool.name}
-                  </h3>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Pricing Section */}
-          <div>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.375rem", color: "#ededed" }}>
-              Pricing
-            </h2>
-            <p style={{ color: "#737373", marginBottom: "1rem", fontSize: "0.875rem" }}>
-              Simple, transparent pricing
-            </p>
-            
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
-              gap: "1rem",
-              maxWidth: "800px"
-            }}>
-              {[
-                { name: "Free", price: "$0", credits: "50 credits/month", features: ["Basic models", "Standard quality", "Community support"] },
-                { name: "Pro", price: "$19", credits: "500 credits/month", features: ["All models", "4K quality", "Priority support", "API access"], popular: true },
-                { name: "Enterprise", price: "$99", credits: "Unlimited", features: ["Everything in Pro", "Custom models", "Dedicated support", "SLA"] },
-              ].map((plan) => (
-                <div
-                  key={plan.name}
-                  className={`pricing-card ${plan.popular ? "popular" : ""}`}
-                >
-                  {plan.popular && (
-                    <span className="badge badge-success" style={{ marginBottom: "0.75rem" }}>
-                      Recommended
-                    </span>
-                  )}
-                  <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "#ededed" }}>{plan.name}</h3>
-                  <div style={{ marginTop: "0.375rem" }}>
-                    <span style={{ fontSize: "2rem", fontWeight: 700, color: "#ededed" }}>{plan.price}</span>
-                    <span style={{ color: "#737373", fontSize: "0.875rem" }}>/month</span>
-                  </div>
-                  <p style={{ marginTop: "0.25rem", fontSize: "0.8125rem", color: "#737373" }}>{plan.credits}</p>
-                  <ul style={{ marginTop: "1rem", listStyle: "none" }}>
-                    {plan.features.map((feature) => (
-                      <li key={feature} style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: "0.5rem", 
-                        fontSize: "0.8125rem", 
-                        color: "#a3a3a3",
-                        marginBottom: "0.5rem"
-                      }}>
-                        <Check size={14} color="#0066ff" />
-                        {feature}
-                      </li>
+              {/* Generation Panel */}
+              <div className="tool-card" style={{ marginBottom: "1.5rem", maxWidth: "800px" }}>
+                {/* Model Selection */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ display: "block", fontSize: "0.8125rem", color: "#737373", marginBottom: "0.5rem", fontWeight: 500 }}>
+                    Model
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {models.map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => setSelectedModel(model.id)}
+                        className={`model-btn ${selectedModel === model.id ? "active" : ""}`}
+                        title={`Quality: ${model.quality} | Est. time: ${model.time}`}
+                        style={{ flexDirection: "column", alignItems: "flex-start", padding: "0.5rem 0.75rem" }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                          {model.name}
+                          <span style={{ opacity: 0.6 }}>{model.tag}</span>
+                        </div>
+                        <div style={{ fontSize: "0.6875rem", opacity: 0.5, marginTop: "0.125rem" }}>
+                          {model.quality} · {model.time}
+                        </div>
+                      </button>
                     ))}
-                  </ul>
-                  <button 
-                    className={plan.popular ? "btn-primary" : "btn-secondary"}
-                    style={{ width: "100%", marginTop: "1rem" }}
-                  >
-                    Get Started
-                  </button>
+                  </div>
                 </div>
-              ))}
+
+                {/* Prompt Input */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ display: "block", fontSize: "0.8125rem", color: "#737373", marginBottom: "0.5rem", fontWeight: 500 }}>
+                    Prompt
+                  </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Describe what you want to create in detail...&#10;&#10;Example: A photorealistic portrait of a woman with flowing red hair, soft studio lighting, 8k quality"
+                      className="input"
+                      style={{ 
+                        width: "100%", 
+                        minHeight: "120px", 
+                        resize: "vertical",
+                        fontFamily: "inherit",
+                        lineHeight: "1.5"
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && e.metaKey && handleGenerate()}
+                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.75rem", color: "#525252" }}>
+                        Press ⌘+Enter to generate
+                      </span>
+                      <button
+                        onClick={handleGenerate}
+                        disabled={isGenerating || !prompt.trim()}
+                        className="btn-primary"
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", whiteSpace: "nowrap" }}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            Generate
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Settings Row */}
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem", fontSize: "0.8125rem", color: "#737373" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                    <Check size={14} color="#0066ff" />
+                    4x Upscale enabled
+                  </span>
+                </div>
+
+                {/* Progress */}
+                {progress && (
+                  <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#171717", borderRadius: "0.375rem", fontSize: "0.875rem", color: "#737373" }}>
+                    {progress}
+                  </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                  <div style={{ marginTop: "1rem", padding: "0.75rem", background: "rgba(255, 59, 48, 0.1)", borderRadius: "0.375rem", fontSize: "0.875rem", color: "#ff3b30", border: "1px solid rgba(255, 59, 48, 0.2)" }}>
+                    {error}
+                  </div>
+                )}
+
+                {/* Generated Image */}
+                {generatedImage && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <img
+                        src={generatedImage}
+                        alt="Generated"
+                        style={{ 
+                          maxWidth: "100%", 
+                          maxHeight: "512px",
+                          borderRadius: "0.5rem",
+                          border: "1px solid #2a2a2a"
+                        }}
+                      />
+                      <div style={{ 
+                        position: "absolute", 
+                        bottom: "0.75rem", 
+                        right: "0.75rem", 
+                        display: "flex", 
+                        gap: "0.5rem" 
+                      }}>
+                        <a 
+                          href={generatedImage} 
+                          download="generated.png"
+                          className="btn-secondary"
+                          style={{ padding: "0.5rem", display: "flex", alignItems: "center", gap: "0.375rem" }}
+                        >
+                          <Download size={14} />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Other Tools - Coming Soon */}
+          {selectedTool !== "explore" && selectedTool !== "image-generator" && (
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              alignItems: "center", 
+              justifyContent: "center",
+              minHeight: "400px",
+              color: "#737373"
+            }}>
+              <div style={{ 
+                width: "64px", 
+                height: "64px", 
+                borderRadius: "16px",
+                background: "#171717",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "1rem"
+              }}>
+                {activeTool && <activeTool.icon size={28} color="#525252" />}
+              </div>
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "#ededed", marginBottom: "0.5rem" }}>
+                {activeTool?.name}
+              </h2>
+              <p style={{ fontSize: "0.875rem" }}>
+                Coming soon! This tool is under development.
+              </p>
             </div>
-          </div>
+          )}
+
         </div>
       </main>
     </div>
