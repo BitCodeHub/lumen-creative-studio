@@ -118,7 +118,7 @@ function createFluxSchnellWorkflow(prompt: string, seed?: number, upscale = true
     "1": {
       "class_type": "UNETLoader",
       "inputs": {
-        "unet_name": "flux1-schnell.safetensors",
+        "unet_name": "flux1-schnell-fp8.safetensors",
         "weight_dtype": "default"
       }
     },
