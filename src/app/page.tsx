@@ -44,28 +44,39 @@ export default function HomePage() {
   const pageRef = useRef(1);
   const fetchingRef = useRef(false);
 
-  const fetchGallery = useCallback(async (p: number, reset = false) => {
+  const fetchGallery = useCallback(async (p: number, reset = false, retries = 2) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     setLoadingGallery(true);
     setGalleryError(false);
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch(`/api/gallery?page=${p}&limit=48`, { signal: controller.signal });
-      clearTimeout(timeout);
-      const data = await res.json();
-      if (reset || p === 1) {
-        setImages(data.images || []);
-      } else {
-        setImages(prev => [...prev, ...(data.images || [])]);
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        const res = await fetch(`/api/gallery?page=${p}&limit=48`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const imgs = data.images || [];
+        if (reset || p === 1) {
+          setImages(imgs);
+        } else {
+          setImages(prev => [...prev, ...imgs]);
+        }
+        setHasMore(data.hasMore ?? false);
+        setPage(p);
+        pageRef.current = p;
+        setLoadingGallery(false);
+        fetchingRef.current = false;
+        return;
+      } catch (e) {
+        lastError = e as Error;
+        if (attempt < retries) await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
       }
-      setHasMore(data.hasMore ?? false);
-      setPage(p);
-      pageRef.current = p;
-    } catch {
-      setGalleryError(true);
     }
+    console.error('Gallery fetch failed after retries:', lastError);
+    setGalleryError(true);
     setLoadingGallery(false);
     fetchingRef.current = false;
   }, []);
@@ -269,11 +280,12 @@ export default function HomePage() {
             {/* Gallery */}
             {galleryError && images.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", color: "#444" }}>
-                <p style={{ marginBottom: 12, fontSize: 14 }}>Gallery temporarily unavailable</p>
+                <p style={{ marginBottom: 6, fontSize: 14, color: "#666" }}>Gallery temporarily unavailable</p>
+                <p style={{ marginBottom: 16, fontSize: 12, color: "#444" }}>The image server may be waking up — please retry in a moment</p>
                 <button onClick={() => fetchGallery(1, true)}
                   style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #333",
-                    background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
-                  Retry
+                    background: "#161616", color: "#888", cursor: "pointer", fontSize: 13 }}>
+                  🔄 Retry
                 </button>
               </div>
             ) : (
