@@ -13,14 +13,14 @@ import {
   Film, 
   Workflow,
   Settings,
-  CreditCard,
   HelpCircle,
   Bell,
   Search,
   Check,
   Loader2,
   Download,
-  ExternalLink
+  Menu,
+  X
 } from "lucide-react";
 
 const tools = [
@@ -64,6 +64,7 @@ export default function HomePage() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -105,8 +106,21 @@ export default function HomePage() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0f0f0f" }}>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          style={{ 
+            position: "fixed", 
+            inset: 0, 
+            background: "rgba(0,0,0,0.5)", 
+            zIndex: 40 
+          }} 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} style={{ transform: sidebarOpen ? "translateX(0)" : undefined }}>
         {/* Logo */}
         <div style={{ 
           padding: "1rem 1rem", 
@@ -141,7 +155,7 @@ export default function HomePage() {
           {tools.map((tool) => (
             <button
               key={tool.id}
-              onClick={() => setSelectedTool(tool.id)}
+              onClick={() => { setSelectedTool(tool.id); setSidebarOpen(false); }}
               className={`nav-item ${selectedTool === tool.id ? "active" : ""}`}
               style={{ 
                 width: "100%", 
@@ -150,7 +164,7 @@ export default function HomePage() {
                 marginBottom: "1px"
               }}
             >
-              <tool.icon size={16} />
+              <tool.icon size={16} color={selectedTool === tool.id ? "#ededed" : "#737373"} />
               <span>{tool.name}</span>
             </button>
           ))}
@@ -179,17 +193,33 @@ export default function HomePage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0.75rem 1.5rem",
+          padding: "0.75rem 1rem",
           background: "#0f0f0f",
-          borderBottom: "1px solid #2a2a2a"
+          borderBottom: "1px solid #2a2a2a",
+          gap: "0.75rem"
         }}>
-          <div style={{ position: "relative" }}>
-            <Search size={16} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#737373" }} />
-            <input 
-              className="input" 
-              placeholder="Search..." 
-              style={{ width: "280px", paddingLeft: "34px", background: "#171717" }}
-            />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="btn-secondary"
+              style={{ 
+                padding: "0.5rem", 
+                borderRadius: "0.375rem",
+                display: "none"
+              }}
+              id="mobile-menu-btn"
+            >
+              {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+            <div style={{ position: "relative" }}>
+              <Search size={16} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#737373" }} />
+              <input 
+                className="input" 
+                placeholder="Search..." 
+                style={{ width: "240px", paddingLeft: "34px", background: "#171717", maxWidth: "100%" }}
+              />
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <button className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "0.375rem" }}>
@@ -275,12 +305,8 @@ export default function HomePage() {
             {/* Settings Row */}
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", fontSize: "0.8125rem", color: "#737373" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                <Check size={14} color="#00c853" />
+                <Check size={14} color="#0066ff" />
                 4x Upscale enabled
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#00c853" }} />
-                DGX Connected
               </span>
             </div>
 
