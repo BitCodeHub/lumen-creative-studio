@@ -22,12 +22,12 @@ import {
 
 const tools = [
   { name: "Dashboard", href: "/", icon: Home },
-  { name: "Image Generator", href: "/tools/image-generator", icon: ImageIcon, gradient: "gradient-purple" },
+  { name: "Image Generator", href: "/tools/image-generator", icon: ImageIcon, gradient: "bg-accent" },
   { name: "Video Generator", href: "/tools/video-generator", icon: VideoIcon, gradient: "gradient-blue" },
   { name: "Interior Design", href: "/tools/interior-design", icon: Sofa, gradient: "gradient-green" },
   { name: "Product Creator", href: "/tools/product-creator", icon: ShoppingBag, gradient: "gradient-orange" },
   { name: "Food Creator", href: "/tools/food-creator", icon: UtensilsCrossed, gradient: "gradient-pink" },
-  { name: "Skin Enhancer", href: "/tools/skin-enhancer", icon: Sparkles, gradient: "gradient-purple" },
+  { name: "Skin Enhancer", href: "/tools/skin-enhancer", icon: Sparkles, gradient: "bg-accent" },
   { name: "AI Upscale", href: "/tools/ai-upscale", icon: ZoomIn, gradient: "gradient-blue" },
   { name: "Mega Studio", href: "/tools/mega-studio", icon: Wand2, gradient: "gradient-pink" },
   { name: "Scenes Creator", href: "/tools/scenes-creator", icon: Mountain, gradient: "gradient-green" },
@@ -48,10 +48,10 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-purple">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <span className="text-lg font-bold bg-gradient-to-r from-blue-500 to-blue-400 bg-clip-text text-transparent">
             Lumen Creative
           </span>
         </div>
@@ -113,13 +113,13 @@ export function Sidebar() {
 
         {/* Credits */}
         <div className="border-t border-border p-4">
-          <div className="rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-4">
+          <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-blue-400/10 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Credits</span>
               <span className="text-lg font-bold text-white">∞</span>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full w-full gradient-purple rounded-full" />
+              <div className="h-full w-full bg-accent rounded-full" />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Unlimited generations
