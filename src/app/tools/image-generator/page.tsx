@@ -180,20 +180,6 @@ export default function ImageGenerator() {
             Create stunning images with FLUX.1-dev + 4K upscaling
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
-            apiStatus === "connected" ? "bg-green-500/20 text-green-400" :
-            apiStatus === "disconnected" ? "bg-red-500/20 text-red-400" :
-            "bg-yellow-500/20 text-yellow-400"
-          }`}>
-            {apiStatus === "connected" ? <Check className="h-3 w-3" /> :
-             apiStatus === "disconnected" ? <AlertCircle className="h-3 w-3" /> :
-             <Loader2 className="h-3 w-3 animate-spin" />}
-            {apiStatus === "connected" ? "GPU Connected" :
-             apiStatus === "disconnected" ? "GPU Offline" : "Checking..."}
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Panel - Controls */}
@@ -351,7 +337,7 @@ export default function ImageGenerator() {
             size="lg"
             className="w-full h-14 text-lg"
             onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim() || apiStatus !== "connected"}
+            disabled={isGenerating || !prompt.trim()}
           >
             {isGenerating ? (
               <>
