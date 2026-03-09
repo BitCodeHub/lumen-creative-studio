@@ -171,7 +171,7 @@ export default function ImageGenerator() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-purple">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
               <ImageIcon className="h-5 w-5 text-white" />
             </div>
             Image Generator
@@ -180,6 +180,7 @@ export default function ImageGenerator() {
             Create stunning images with FLUX.1-dev + 4K upscaling
           </p>
         </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Panel - Controls */}
