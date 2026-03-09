@@ -52,7 +52,7 @@ export default function HomePage() {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch(`/api/gallery?page=${p}&limit=24`, { signal: controller.signal });
+      const res = await fetch(`/api/gallery?page=${p}&limit=48`, { signal: controller.signal });
       clearTimeout(timeout);
       const data = await res.json();
       if (reset || p === 1) {
@@ -78,7 +78,7 @@ export default function HomePage() {
       if (entries[0].isIntersecting && hasMore && !fetchingRef.current) {
         fetchGallery(pageRef.current + 1);
       }
-    }, { rootMargin: "600px" });
+    }, { rootMargin: "1200px" });
     if (loaderRef.current) observerRef.current.observe(loaderRef.current);
     return () => observerRef.current?.disconnect();
   }, [hasMore, fetchGallery]);
