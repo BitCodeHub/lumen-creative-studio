@@ -232,7 +232,7 @@ export default function HomePage() {
         </header>
 
         {/* Content Area */}
-        <div style={{ padding: "1.5rem" }}>
+        <div style={{ padding: "1.5rem 2rem", width: "100%" }}>
           {/* Tool Header */}
           <div style={{ marginBottom: "1.5rem" }}>
             <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "#ededed", marginBottom: "0.25rem" }}>
@@ -276,34 +276,44 @@ export default function HomePage() {
               <label style={{ display: "block", fontSize: "0.8125rem", color: "#737373", marginBottom: "0.5rem", fontWeight: 500 }}>
                 Prompt
               </label>
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <input
-                  type="text"
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe what you want to create..."
+                  placeholder="Describe what you want to create in detail...&#10;&#10;Example: A photorealistic portrait of a woman with flowing red hair, soft studio lighting, 8k quality"
                   className="input"
-                  style={{ flex: 1 }}
-                  onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+                  style={{ 
+                    width: "100%", 
+                    minHeight: "120px", 
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    lineHeight: "1.5"
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && e.metaKey && handleGenerate()}
                 />
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !prompt.trim()}
-                  className="btn-primary"
-                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", whiteSpace: "nowrap" }}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      Generate
-                    </>
-                  )}
-                </button>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#525252" }}>
+                    Press ⌘+Enter to generate
+                  </span>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !prompt.trim()}
+                    className="btn-primary"
+                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", whiteSpace: "nowrap" }}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={16} />
+                        Generate
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
