@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Compass, Diamond, Archive, ChevronDown,
   Loader2, Download, Heart, Copy, Check, Sparkles,
-  Image as ImageIcon, Plus, Wand2, ChevronUp, ChevronDown as ChevronDownIcon, X
+  Image as ImageIcon, Plus, Wand2, ChevronLeft, ChevronRight, X
 } from "lucide-react";
 
 interface GalleryImage {
@@ -113,15 +113,11 @@ export default function HomePage() {
 
   // Close detail on Escape, navigate with arrow keys
   useEffect(() => {
+    if (selectedIdx === null) return;
     const handler = (e: KeyboardEvent) => {
-      if (selectedIdx === null) return;
       if (e.key === "Escape") setSelectedIdx(null);
-      if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-        setSelectedIdx(i => i !== null && i > 0 ? i - 1 : i);
-      }
-      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-        setSelectedIdx(i => i !== null && i < images.length - 1 ? i + 1 : i);
-      }
+      if (e.key === "ArrowLeft") setSelectedIdx(i => i !== null && i > 0 ? i - 1 : i);
+      if (e.key === "ArrowRight") setSelectedIdx(i => i !== null && i < images.length - 1 ? i + 1 : i);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -223,7 +219,7 @@ export default function HomePage() {
 
         {activeNav === "explore" && (
           <>
-            {/* Header + tabs */}
+            {/* Header */}
             <div style={{ textAlign: "center", padding: "28px 24px 16px" }}>
               <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: -0.3 }}>
                 Start Creating With <span style={{ color: "#4d9fff" }}>AI Image</span>
@@ -248,7 +244,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* 5-column masonry gallery (Dreamina-style) */}
+            {/* ===== 5-COLUMN MASONRY GALLERY (Dreamina-style) ===== */}
             {galleryError && images.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", color: "#444" }}>
                 <p style={{ marginBottom: 6, fontSize: 14, color: "#666" }}>Gallery temporarily unavailable</p>
@@ -262,50 +258,31 @@ export default function HomePage() {
                 </button>
               </div>
             ) : (
-              <div style={{ padding: "14px 12px 140px", columns: "5 160px", gap: "8px" }}>
-                {loadingGallery && images.length === 0 && Array.from({ length: 20 }).map((_, i) => (
-                  <div key={`sk-${i}`} style={{
-                    breakInside: "avoid", marginBottom: 8,
+              <div className="masonry-grid">
+                {loadingGallery && images.length === 0 && Array.from({ length: 25 }).map((_, i) => (
+                  <div key={`sk-${i}`} className="masonry-item" style={{
                     borderRadius: 8, background: "#161616",
                     height: [240, 320, 200, 280, 220, 360, 240, 300, 200, 320,
-                      260, 340, 220, 290, 200, 310, 250, 380, 210, 280][i],
+                      260, 340, 220, 290, 200, 310, 250, 380, 210, 280, 300, 240, 320, 200, 260][i],
                     animation: "pulse 1.6s ease-in-out infinite"
                   }} />
                 ))}
                 {images.map((img, idx) => (
                   <div key={img.id}
-                    onClick={() => setSelectedIdx(idx)}
-                    style={{
-                      breakInside: "avoid", marginBottom: 8, position: "relative",
-                      borderRadius: 8, overflow: "hidden", cursor: "pointer",
-                      background: "#161616", transition: "transform 0.2s"
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.02)")}
-                    onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}>
+                    className="masonry-item gallery-card"
+                    onClick={() => setSelectedIdx(idx)}>
                     <img
                       src={img.imageUrl}
-                      alt={img.prompt.slice(0, 60)}
+                      alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
                       loading="lazy"
                       style={{ width: "100%", display: "block", borderRadius: 8 }}
-                      onError={e => { (e.target as HTMLImageElement).closest("div")!.style.display = "none"; }}
+                      onError={e => { (e.target as HTMLImageElement).closest(".masonry-item")!.style.display = "none"; }}
                     />
-                    {/* Hover overlay: just heart + like */}
-                    <div style={{
-                      position: "absolute", inset: 0, borderRadius: 8,
-                      background: "rgba(0,0,0,0)",
-                      transition: "background 0.2s",
-                      display: "flex", alignItems: "flex-end", padding: 6,
-                    }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,0,0,0)")}>
+                    {/* Hover overlay */}
+                    <div className="gallery-overlay">
                       <button
-                        onClick={e => { e.stopPropagation(); toggleLike(img.id); }}
-                        style={{
-                          width: 26, height: 26, borderRadius: "50%", border: "none",
-                          background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          marginLeft: "auto",
-                        }}>
+                        className="like-btn"
+                        onClick={e => { e.stopPropagation(); toggleLike(img.id); }}>
                         <Heart size={12} color="white" fill={liked.has(img.id) ? "white" : "none"} />
                       </button>
                     </div>
@@ -409,24 +386,79 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* ========== DETAIL VIEW OVERLAY (Dreamina-style) ========== */}
+      {/* ===== DETAIL VIEW (Dreamina-style full screen) ===== */}
       {selectedImg && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 200,
-          background: "rgba(0,0,0,0.92)",
-          display: "flex",
-        }}
-          onClick={() => setSelectedIdx(null)}>
-
-          {/* Left: Image */}
-          <div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "24px 0 24px 24px",
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.95)",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}
-            onClick={e => e.stopPropagation()}>
+          onClick={() => setSelectedIdx(null)}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setSelectedIdx(null)}
+            style={{
+              position: "absolute", top: 16, right: 16,
+              width: 36, height: 36, borderRadius: "50%",
+              border: "none", background: "rgba(255,255,255,0.1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#ccc", zIndex: 10,
+            }}>
+            <X size={16} />
+          </button>
+
+          {/* Left arrow */}
+          <button
+            onClick={e => { e.stopPropagation(); setSelectedIdx(i => i !== null && i > 0 ? i - 1 : i); }}
+            disabled={selectedIdx === 0}
+            style={{
+              position: "absolute", left: 20, top: "50%", transform: "translateY(-50%)",
+              width: 44, height: 44, borderRadius: "50%", border: "none",
+              background: selectedIdx === 0 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.12)",
+              color: selectedIdx === 0 ? "#333" : "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: selectedIdx === 0 ? "not-allowed" : "pointer",
+              zIndex: 10, backdropFilter: "blur(8px)",
+              transition: "background 0.15s",
+            }}>
+            <ChevronLeft size={22} />
+          </button>
+
+          {/* Right arrow */}
+          <button
+            onClick={e => { e.stopPropagation(); setSelectedIdx(i => i !== null && i < images.length - 1 ? i + 1 : i); }}
+            disabled={selectedIdx === images.length - 1}
+            style={{
+              position: "absolute", right: 380, top: "50%", transform: "translateY(-50%)",
+              width: 44, height: 44, borderRadius: "50%", border: "none",
+              background: selectedIdx === images.length - 1 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.12)",
+              color: selectedIdx === images.length - 1 ? "#333" : "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: selectedIdx === images.length - 1 ? "not-allowed" : "pointer",
+              zIndex: 10, backdropFilter: "blur(8px)",
+              transition: "background 0.15s",
+            }}>
+            <ChevronRight size={22} />
+          </button>
+
+          {/* Main image area */}
+          <div
+            style={{
+              flex: 1,
+              height: "100vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "24px 80px 24px 80px",
+              marginRight: 360,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
             <img
               src={selectedImg.imageUrl}
-              alt={selectedImg.prompt.slice(0, 80)}
+              alt={selectedImg.prompt ? selectedImg.prompt.slice(0, 80) : "AI image"}
               style={{
                 maxHeight: "calc(100vh - 48px)",
                 maxWidth: "100%",
@@ -437,49 +469,62 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Right: Details panel */}
-          <div style={{
-            width: 320, background: "#111", borderLeft: "1px solid #1e1e1e",
-            display: "flex", flexDirection: "column",
-            position: "relative",
-          }}
-            onClick={e => e.stopPropagation()}>
+          {/* Right panel */}
+          <div
+            style={{
+              position: "fixed",
+              right: 0, top: 0, bottom: 0,
+              width: 360,
+              background: "#111",
+              borderLeft: "1px solid #1e1e1e",
+              display: "flex",
+              flexDirection: "column",
+              overflowY: "auto",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Panel top padding for close button */}
+            <div style={{ height: 60 }} />
 
-            {/* Close button */}
-            <button onClick={() => setSelectedIdx(null)}
-              style={{
-                position: "absolute", top: 14, right: 14,
-                width: 30, height: 30, borderRadius: "50%",
-                border: "none", background: "rgba(255,255,255,0.08)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", color: "#aaa",
-              }}>
-              <X size={15} />
-            </button>
-
-            <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #1a1a1a" }}>
-              {/* Model badge */}
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                background: "rgba(77,159,255,0.12)", borderRadius: 20,
-                padding: "3px 10px", marginBottom: 14,
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4d9fff" }} />
-                <span style={{ fontSize: 12, color: "#4d9fff", fontWeight: 500 }}>{selectedImg.model}</span>
+            {/* Author area (placeholder) */}
+            <div style={{ padding: "0 20px 16px", borderBottom: "1px solid #1a1a1a" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #0066ff, #00aaff)",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  <Sparkles size={14} color="white" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ddd" }}>Lumen AI</div>
+                  <div style={{ fontSize: 11, color: "#555" }}>AI Generated</div>
+                </div>
+                {/* Model badge */}
+                <div style={{
+                  marginLeft: "auto",
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  background: "rgba(77,159,255,0.12)", borderRadius: 20,
+                  padding: "3px 10px",
+                }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4d9fff" }} />
+                  <span style={{ fontSize: 11, color: "#4d9fff", fontWeight: 500 }}>{selectedImg.model}</span>
+                </div>
               </div>
-
-              <p style={{ fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase",
-                letterSpacing: 0.6, marginBottom: 8 }}>Prompt</p>
-              <p style={{
-                fontSize: 13.5, color: "#ccc", lineHeight: 1.65,
-                maxHeight: 200, overflowY: "auto",
-              }}>
-                {selectedImg.prompt}
-              </p>
             </div>
 
-            {/* Action buttons */}
-            <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Image preview thumbnail + actions */}
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #1a1a1a" }}>
+              <img
+                src={selectedImg.imageUrl}
+                alt="thumbnail"
+                style={{
+                  width: "100%", borderRadius: 10,
+                  maxHeight: 280, objectFit: "cover",
+                  marginBottom: 12,
+                }}
+              />
+              {/* Action buttons */}
               <button
                 onClick={() => {
                   setPrompt(selectedImg.prompt);
@@ -491,6 +536,7 @@ export default function HomePage() {
                   background: "#0066ff", border: "none",
                   color: "white", fontWeight: 600, fontSize: 14, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  marginBottom: 8,
                 }}>
                 <Sparkles size={14} /> Use prompt
               </button>
@@ -521,43 +567,41 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Up/Down navigation arrows — Dreamina style */}
-            <div style={{
-              position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
-              display: "flex", flexDirection: "column", gap: 8,
-            }}>
+            {/* Prompt section */}
+            <div style={{ padding: "16px 20px", flex: 1 }}>
+              <p style={{
+                fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase",
+                letterSpacing: 0.6, marginBottom: 10,
+              }}>
+                Prompt
+              </p>
+              <p style={{
+                fontSize: 13.5, color: "#bbb", lineHeight: 1.7,
+              }}>
+                {selectedImg.prompt || "No prompt available"}
+              </p>
+            </div>
+
+            {/* Like button at bottom */}
+            <div style={{ padding: "16px 20px", borderTop: "1px solid #1a1a1a" }}>
               <button
-                onClick={() => setSelectedIdx(i => i !== null && i > 0 ? i - 1 : i)}
-                disabled={selectedIdx === 0}
+                onClick={() => toggleLike(selectedImg.id)}
                 style={{
-                  width: 36, height: 36, borderRadius: "50%", border: "none",
-                  background: selectedIdx === 0 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.1)",
-                  color: selectedIdx === 0 ? "#333" : "#aaa",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: selectedIdx === 0 ? "not-allowed" : "pointer",
-                  transition: "background 0.15s",
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+                  borderRadius: 8, border: "1px solid #2a2a2a", background: "#161616",
+                  color: liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa",
+                  fontSize: 13, cursor: "pointer",
                 }}>
-                <ChevronUp size={18} />
-              </button>
-              <button
-                onClick={() => setSelectedIdx(i => i !== null && i < images.length - 1 ? i + 1 : i)}
-                disabled={selectedIdx === images.length - 1}
-                style={{
-                  width: 36, height: 36, borderRadius: "50%", border: "none",
-                  background: selectedIdx === images.length - 1 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.1)",
-                  color: selectedIdx === images.length - 1 ? "#333" : "#aaa",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: selectedIdx === images.length - 1 ? "not-allowed" : "pointer",
-                  transition: "background 0.15s",
-                }}>
-                <ChevronDownIcon size={18} />
+                <Heart size={14} fill={liked.has(selectedImg.id) ? "#ff6b6b" : "none"}
+                  color={liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa"} />
+                {liked.has(selectedImg.id) ? "Liked" : "Like"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ========== FLOATING PROMPT BAR ========== */}
+      {/* ===== FLOATING PROMPT BAR ===== */}
       <div ref={floatingRef} style={{
         position: "fixed",
         bottom: 24,
@@ -710,13 +754,80 @@ export default function HomePage() {
         ::-webkit-scrollbar-track { background: #0a0a0a; }
         ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
         textarea::placeholder { color: #444; }
-        @media (max-width: 900px) {
-          div[style*="columns: 5"] { columns: 3 120px !important; }
+
+        /* 5-column masonry grid */
+        .masonry-grid {
+          padding: 14px 8px 140px;
+          columns: 5;
+          column-gap: 8px;
         }
-        @media (max-width: 640px) {
+
+        .masonry-item {
+          break-inside: avoid;
+          margin-bottom: 8px;
+          border-radius: 8px;
+          overflow: hidden;
+          position: relative;
+          background: #161616;
+          cursor: pointer;
+        }
+
+        /* Hover card scale */
+        .gallery-card {
+          transition: transform 0.2s ease;
+        }
+        .gallery-card:hover {
+          transform: scale(1.02);
+          z-index: 1;
+        }
+
+        /* Hover overlay */
+        .gallery-overlay {
+          position: absolute;
+          inset: 0;
+          border-radius: 8px;
+          background: rgba(0,0,0,0);
+          transition: background 0.2s;
+          display: flex;
+          align-items: flex-end;
+          padding: 6px;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .gallery-card:hover .gallery-overlay {
+          opacity: 1;
+          background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+        }
+
+        .like-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(4px);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: auto;
+          color: white;
+        }
+
+        /* Responsive masonry */
+        @media (max-width: 1400px) {
+          .masonry-grid { columns: 5; }
+        }
+        @media (max-width: 1100px) {
+          .masonry-grid { columns: 4; }
+        }
+        @media (max-width: 800px) {
+          .masonry-grid { columns: 3; }
           aside { width: 52px !important; }
           main { margin-left: 52px !important; }
-          div[style*="columns: 5"] { columns: 2 120px !important; }
+        }
+        @media (max-width: 500px) {
+          .masonry-grid { columns: 2; }
         }
       `}</style>
     </div>
