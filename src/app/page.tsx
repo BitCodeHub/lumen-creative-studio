@@ -186,11 +186,13 @@ export default function HomePage() {
   const [tab, setTab] = useState<"trends" | "shorts">("trends");
 
   // Aspect ratio / resolution / size state
+  const [arPanelOpen, setArPanelOpen] = useState(false);
   const [selectedAR, setSelectedAR] = useState(0); // index into ASPECT_RATIOS (0 = Auto)
   const [resolution, setResolution] = useState<ResTier>("good");
   const [imgW, setImgW] = useState(1024);
   const [imgH, setImgH] = useState(1024);
   const [arLocked, setArLocked] = useState(true);
+  const arPanelRef = useRef<HTMLDivElement>(null);
   // Floating bar has its own independent AR panel state
   const [floatArPanelOpen, setFloatArPanelOpen] = useState(false);
   const floatArPanelRef = useRef<HTMLDivElement>(null);
@@ -286,7 +288,9 @@ export default function HomePage() {
         setFloatingExpanded(false);
         setFloatArPanelOpen(false);
       }
-
+      if (arPanelRef.current && !arPanelRef.current.contains(e.target as Node)) {
+        setArPanelOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -344,6 +348,7 @@ export default function HomePage() {
     setGeneratedImage(null);
     setProgress("Submitting...");
     setFloatingExpanded(false);
+    setArPanelOpen(false);
     setFloatArPanelOpen(false);
     try {
       const res = await fetch("/api/generate", {
@@ -434,11 +439,228 @@ export default function HomePage() {
 
         {activeNav === "explore" && (
           <>
-            {/* ===== MINIMAL TITLE HEADER ===== */}
-            <div style={{ padding: "20px 24px 14px", textAlign: "center" }}>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: -0.3 }}>
-                Explore <span style={{ color: "#4d9fff" }}>AI Images</span>
+            {/* ===== DREAMINA-STYLE TOP PROMPT BOX ===== */}
+            {/* paddingBottom expands when AR panel is open to prevent grid from covering it */}
+            <div style={{ padding: "28px 24px 20px", maxWidth: 1000, margin: "0 auto", paddingBottom: arPanelOpen ? 340 : 20 }}>
+              {/* Title */}
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: "0 0 18px", letterSpacing: -0.3, textAlign: "center" }}>
+                Start Creating With <span style={{ color: "#4d9fff" }}>AI Image</span>
               </h1>
+
+              {/* Prompt box */}
+              <div style={{
+                background: "rgba(22,22,26,0.95)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
+                position: "relative",
+              }}>
+                {/* Text area row */}
+                <div style={{ display: "flex", gap: 12, padding: "14px 16px 10px", alignItems: "flex-start" }}>
+                  <button style={{
+                    width: 40, height: 40, borderRadius: 10, border: "1.5px dashed #333",
+                    background: "#1e1e22", display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", flexShrink: 0, color: "#555", marginTop: 2,
+                  }}>
+                    <Plus size={16} />
+                  </button>
+                  <textarea
+                    value={prompt}
+                    onChange={e => setPrompt(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
+                    placeholder="Describe the image you're imagining..."
+                    style={{
+                      flex: 1, border: "none", outline: "none", resize: "none",
+                      fontSize: 14.5, color: "#ddd", background: "transparent",
+                      fontFamily: "inherit", minHeight: 48, maxHeight: 120,
+                      lineHeight: 1.55, paddingTop: 4,
+                    }}
+                  />
+                </div>
+
+                {/* Bottom toolbar */}
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "6px 16px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
+                  flexWrap: "wrap", gap: 8,
+                }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", position: "relative" }}>
+                    {/* Model selector */}
+                    <div style={{ position: "relative" }}>
+                      <select
+                        value={model}
+                        onChange={e => setModel(e.target.value)}
+                        style={{
+                          appearance: "none", WebkitAppearance: "none",
+                          padding: "5px 28px 5px 10px",
+                          borderRadius: 20, border: "1px solid #2a2a2a",
+                          background: "#1e1e22", fontSize: 12, color: "#bbb",
+                          cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
+                          outline: "none",
+                        }}>
+                        {MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                      </select>
+                      <ChevronDown size={11} color="#555" style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                    </div>
+
+                    {/* Aspect ratio button */}
+                    <div ref={arPanelRef} style={{ position: "relative" }}>
+                      <button
+                        onClick={() => setArPanelOpen(v => !v)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+                          borderRadius: 20,
+                          border: arPanelOpen ? "1px solid #4d9fff" : "1px solid #2a2a2a",
+                          background: arPanelOpen ? "rgba(77,159,255,0.08)" : "#1e1e22",
+                          fontSize: 12, color: arPanelOpen ? "#4d9fff" : "#bbb", cursor: "pointer",
+                        }}>
+                        <div style={{
+                          width: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 13 : 9,
+                          height: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 9 : 13,
+                          border: "1.5px solid currentColor", borderRadius: 2, flexShrink: 0,
+                        }} />
+                        {ASPECT_RATIOS[selectedAR].label} | {RES_TIERS[resolution].label}
+                        <ChevronDown size={10} color="currentColor" />
+                      </button>
+
+                      {/* Aspect ratio panel — opens downward */}
+                      {arPanelOpen && (
+                        <div style={{
+                          position: "absolute", top: "calc(100% + 8px)", left: 0,
+                          background: "#1a1a1e", border: "1px solid #2a2a2a", borderRadius: 14,
+                          padding: "16px", zIndex: 300, minWidth: 360,
+                          boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
+                        }}>
+                          {/* Aspect ratio presets */}
+                          <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>Aspect ratio</p>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                            {ASPECT_RATIOS.map((ar, i) => {
+                              const isWide = ar.w > ar.h;
+                              const isSquare = ar.w === ar.h;
+                              const boxW = isWide ? 22 : isSquare ? 16 : 11;
+                              const boxH = isWide ? 14 : isSquare ? 16 : 22;
+                              return (
+                                <button key={ar.label} onClick={() => selectAR(i)}
+                                  style={{
+                                    display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+                                    padding: "8px 10px", borderRadius: 8, cursor: "pointer",
+                                    border: selectedAR === i ? "1.5px solid #4d9fff" : "1.5px solid #2a2a2a",
+                                    background: selectedAR === i ? "rgba(77,159,255,0.1)" : "#111",
+                                    minWidth: 44,
+                                  }}>
+                                  <div style={{
+                                    width: boxW, height: boxH,
+                                    border: `1.5px solid ${selectedAR === i ? "#4d9fff" : "#555"}`,
+                                    borderRadius: 2,
+                                  }} />
+                                  <span style={{ fontSize: 10, color: selectedAR === i ? "#4d9fff" : "#888", fontWeight: 500 }}>{ar.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Resolution toggle — 3 tiers */}
+                          <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Resolution</p>
+                          <div style={{ display: "flex", gap: 0, marginBottom: 16, border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden" }}>
+                            {(Object.entries(RES_TIERS) as [ResTier, typeof RES_TIERS[ResTier]][]).map(([key, tier]) => (
+                              <button key={key} onClick={() => changeResolution(key)}
+                                style={{
+                                  flex: 1, padding: "9px 4px", border: "none", cursor: "pointer",
+                                  background: resolution === key ? "rgba(77,159,255,0.18)" : "#111",
+                                  color: resolution === key ? "#4d9fff" : "#666",
+                                  fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                                  borderRight: key !== "4k" ? "1px solid #2a2a2a" : "none",
+                                }}>
+                                {key === "4k" ? <span>{tier.label} <span style={{ color: "#4dff91", fontSize: 10 }}>✦</span></span> : tier.label}
+                                <div style={{ fontSize: 9, color: resolution === key ? "#4d9fff99" : "#444", marginTop: 2, fontWeight: 400 }}>
+                                  {key === "good" ? "1024px" : key === "2k" ? "2048px" : "4x upscale"}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Custom W/H size */}
+                          <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Size</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1,
+                              background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "6px 10px" }}>
+                              <span style={{ fontSize: 11, color: "#666", fontWeight: 600, minWidth: 14 }}>W</span>
+                              <input type="number" value={imgW} min={256} max={2048} step={64}
+                                onChange={e => changeW(Number(e.target.value))}
+                                style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                                  color: "#ddd", fontSize: 13, fontFamily: "inherit", textAlign: "center" }} />
+                            </div>
+                            {/* Lock button */}
+                            <button onClick={() => setArLocked(v => !v)}
+                              style={{
+                                width: 30, height: 30, borderRadius: "50%", border: "1px solid #2a2a2a",
+                                background: arLocked ? "rgba(77,159,255,0.1)" : "#111",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer", color: arLocked ? "#4d9fff" : "#555", flexShrink: 0,
+                              }}>
+                              {arLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                            </button>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1,
+                              background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "6px 10px" }}>
+                              <span style={{ fontSize: 11, color: "#666", fontWeight: 600, minWidth: 14 }}>H</span>
+                              <input type="number" value={imgH} min={256} max={2048} step={64}
+                                onChange={e => changeH(Number(e.target.value))}
+                                style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                                  color: "#ddd", fontSize: 13, fontFamily: "inherit", textAlign: "center" }} />
+                              <span style={{ fontSize: 10, color: "#444" }}>PX</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {isGenerating && <span style={{ fontSize: 12, color: "#666" }}>{progress}</span>}
+                    <span style={{ fontSize: 11.5, color: "#444" }}>✦ 0/image</span>
+                    <button
+                      onClick={generate}
+                      disabled={isGenerating || !prompt.trim()}
+                      style={{
+                        width: 36, height: 36, borderRadius: "50%", border: "none",
+                        background: isGenerating || !prompt.trim() ? "#1e1e22" : "linear-gradient(135deg, #0066ff, #0044bb)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer",
+                        boxShadow: isGenerating || !prompt.trim() ? "none" : "0 2px 12px rgba(0,102,255,0.45)",
+                        transition: "all 0.15s", flexShrink: 0,
+                      }}>
+                      {isGenerating
+                        ? <Loader2 size={15} color="#555" style={{ animation: "spin 1s linear infinite" }} />
+                        : <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                            <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error */}
+                {error && (
+                  <div style={{ padding: "8px 16px 10px", borderTop: "1px solid #2a1515", fontSize: 12.5, color: "#ff6b6b" }}>
+                    {error}
+                  </div>
+                )}
+                {/* Generated image preview */}
+                {generatedImage && (
+                  <div style={{ padding: "10px 16px 14px", borderTop: "1px solid #1a1a1a" }}>
+                    <img src={generatedImage} alt="Generated"
+                      style={{ maxWidth: 300, borderRadius: 10, border: "1px solid #1e1e1e" }} />
+                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                      <a href={generatedImage} download="generated.png"
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5, padding: "6px 12px",
+                          background: "#161616", border: "1px solid #2a2a2a", borderRadius: 8,
+                          color: "#bbb", textDecoration: "none", fontSize: 12,
+                        }}>
+                        <Download size={12} /> Download
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Tabs */}
@@ -823,7 +1045,7 @@ export default function HomePage() {
                   <ChevronDown size={11} color="#555" style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                 </div>
 
-                {/* Aspect ratio button - floating bar (independent state) */}
+                {/* Aspect ratio button */}
                 <div ref={floatArPanelRef} style={{ position: "relative" }}>
                   <button
                     onClick={() => setFloatArPanelOpen(v => !v)}
