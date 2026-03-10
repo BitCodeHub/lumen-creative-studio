@@ -2,12 +2,12 @@
 import { useState, useRef, useCallback } from "react";
 
 const STYLES = [
-  { id: "linkedin", label: "LinkedIn Pro", icon: "💼" },
-  { id: "creative", label: "Creative", icon: "🎨" },
-  { id: "casual", label: "Casual", icon: "😊" },
-  { id: "executive", label: "Executive", icon: "🏢" },
-  { id: "studio", label: "Studio", icon: "📸" },
-  { id: "glamour", label: "Glamour", icon: "✨" },
+  { id: "linkedin", label: "Professional", icon: "💼", desc: "Corporate & clean" },
+  { id: "creative", label: "Creative", icon: "🎨", desc: "Artistic flair" },
+  { id: "casual", label: "Casual", icon: "☀️", desc: "Natural & friendly" },
+  { id: "executive", label: "Executive", icon: "👔", desc: "Power & authority" },
+  { id: "studio", label: "Studio", icon: "📸", desc: "Classic portrait" },
+  { id: "glamour", label: "Glamour", icon: "✨", desc: "Red carpet ready" },
 ];
 
 type HeadshotResult = {
@@ -100,191 +100,243 @@ export default function HeadshotsPage() {
   };
 
   const doneCount = results.filter((r) => r.status === "done").length;
+  const progress = results.length > 0 ? (doneCount / results.length) * 100 : 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans">
       {/* Header */}
-      <div style={{ borderBottom: "1px solid #1a1a1a", padding: "20px 40px", display: "flex", alignItems: "center", gap: 16 }}>
-        <a href="/" style={{ color: "#888", textDecoration: "none", fontSize: 14 }}>← Back</a>
-        <div style={{ width: 1, height: 20, background: "#333" }} />
+      <header className="border-b border-[#1a1a1a] px-6 py-4 flex items-center gap-4">
+        <a href="/" className="text-gray-500 hover:text-white transition text-sm flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </a>
+        <div className="w-px h-5 bg-[#333]" />
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>AI Headshots</h1>
-          <p style={{ margin: 0, color: "#888", fontSize: 13 }}>Upload 1 photo → get professional headshots in 6 styles</p>
+          <h1 className="text-xl font-bold">AI Headshots</h1>
+          <p className="text-gray-500 text-sm">Professional photos in seconds</p>
         </div>
-        <div style={{ marginLeft: "auto", background: "#1a1a2e", border: "1px solid #7c3aed", borderRadius: 8, padding: "6px 14px", fontSize: 13, color: "#a78bfa" }}>
-          ⚡ Powered by DGX Spark
-        </div>
-      </div>
+      </header>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 32 }}>
+      <main className="max-w-6xl mx-auto p-6">
+        <div className="grid lg:grid-cols-[380px_1fr] gap-8">
 
-          {/* Left — Upload + Config */}
-          <div>
-            {/* Upload zone */}
+          {/* Left Panel */}
+          <div className="space-y-6">
+            {/* Upload Zone */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
               onClick={() => fileRef.current?.click()}
-              style={{
-                border: `2px dashed ${dragOver ? "#7c3aed" : "#333"}`,
-                borderRadius: 16,
-                padding: 24,
-                textAlign: "center",
-                cursor: "pointer",
-                background: dragOver ? "rgba(124,58,237,0.05)" : "#111",
-                transition: "all 0.2s",
-                marginBottom: 24,
-                minHeight: 240,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              className={`
+                relative rounded-2xl border-2 border-dashed transition-all cursor-pointer overflow-hidden
+                ${dragOver ? 'border-violet-500 bg-violet-500/5' : 'border-[#333] bg-[#111] hover:border-[#444]'}
+                ${photoPreview ? 'aspect-square' : 'aspect-[4/3]'}
+              `}
             >
               {photoPreview ? (
-                <img src={photoPreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 12, objectFit: "cover" }} />
+                <div className="relative w-full h-full group">
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <span className="text-sm font-medium">Click to change</span>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>🤳</div>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>Upload your photo</p>
-                  <p style={{ margin: "6px 0 0", color: "#666", fontSize: 13 }}>Drag & drop or click • JPG, PNG, WEBP</p>
-                  <p style={{ margin: "4px 0 0", color: "#555", fontSize: 12 }}>Best results: clear face, good lighting</p>
-                </>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <p className="font-semibold text-white">Drop your photo here</p>
+                  <p className="text-gray-500 text-sm mt-1">or click to browse</p>
+                  <div className="flex gap-2 mt-4">
+                    <span className="px-2 py-1 bg-[#1a1a1a] rounded text-xs text-gray-400">JPG</span>
+                    <span className="px-2 py-1 bg-[#1a1a1a] rounded text-xs text-gray-400">PNG</span>
+                    <span className="px-2 py-1 bg-[#1a1a1a] rounded text-xs text-gray-400">WEBP</span>
+                  </div>
+                </div>
               )}
-              <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
 
-            {/* Style selector */}
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: "0 0 12px", fontWeight: 600, fontSize: 14, color: "#ccc" }}>
-                Select styles ({selectedStyles.length}/6)
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {/* Style Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-300">Choose your styles</span>
+                <span className="text-xs text-gray-500">{selectedStyles.length} selected</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 {STYLES.map((s) => {
                   const active = selectedStyles.includes(s.id);
                   return (
                     <button
                       key={s.id}
                       onClick={() => toggleStyle(s.id)}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        border: `1px solid ${active ? "#7c3aed" : "#333"}`,
-                        background: active ? "rgba(124,58,237,0.15)" : "#111",
-                        color: active ? "#a78bfa" : "#888",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontSize: 13,
-                        fontWeight: active ? 600 : 400,
-                        transition: "all 0.15s",
-                      }}
+                      className={`
+                        p-3 rounded-xl text-left transition-all
+                        ${active 
+                          ? 'bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 border border-violet-500/50 ring-1 ring-violet-500/20' 
+                          : 'bg-[#111] border border-[#222] hover:border-[#333]'}
+                      `}
                     >
-                      {s.icon} {s.label}
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{s.icon}</span>
+                        <div>
+                          <p className={`text-sm font-medium ${active ? 'text-white' : 'text-gray-400'}`}>{s.label}</p>
+                          <p className="text-xs text-gray-500">{s.desc}</p>
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Generate button */}
+            {/* Generate Button */}
             <button
               onClick={generate}
               disabled={!photo || selectedStyles.length === 0 || loading}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                borderRadius: 12,
-                border: "none",
-                background: (!photo || loading) ? "#333" : "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                color: (!photo || loading) ? "#666" : "#fff",
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: (!photo || loading) ? "not-allowed" : "pointer",
-                transition: "all 0.2s",
-              }}
+              className={`
+                w-full py-4 rounded-xl font-semibold text-sm transition-all
+                ${(!photo || loading) 
+                  ? 'bg-[#222] text-gray-500 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25'}
+              `}
             >
-              {loading ? "⏳ Queuing jobs..." : `✨ Generate ${selectedStyles.length} Headshots`}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                `Generate ${selectedStyles.length} Headshot${selectedStyles.length > 1 ? 's' : ''}`
+              )}
             </button>
 
             {error && (
-              <div style={{ marginTop: 12, padding: 12, background: "#1a0000", border: "1px solid #7f1d1d", borderRadius: 8, color: "#f87171", fontSize: 13 }}>
-                ⚠️ {error}
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {error}
               </div>
             )}
 
-            {/* Value prop */}
-            <div style={{ marginTop: 24, padding: 16, background: "#111", border: "1px solid #1e1e2e", borderRadius: 12 }}>
-              <p style={{ margin: "0 0 8px", color: "#888", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Why Lumen Headshots?</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {["$0 — unlimited generations", "6 professional styles instantly", "800K image-trained LoRA", "Private & secure — no data stored"].map((t) => (
-                  <div key={t} style={{ display: "flex", gap: 8, fontSize: 12, color: "#aaa" }}>
-                    <span style={{ color: "#7c3aed" }}>✓</span> {t}
-                  </div>
+            {/* Tips */}
+            <div className="p-4 rounded-xl bg-[#111] border border-[#1a1a1a]">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Pro tips</p>
+              <ul className="space-y-2">
+                {[
+                  "Use a clear, well-lit photo",
+                  "Face the camera directly",
+                  "Avoid busy backgrounds",
+                  "Higher resolution = better results"
+                ].map((tip) => (
+                  <li key={tip} className="flex items-start gap-2 text-sm text-gray-400">
+                    <span className="text-violet-400 mt-0.5">•</span>
+                    {tip}
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           </div>
 
-          {/* Right — Results grid */}
+          {/* Right Panel - Results */}
           <div>
             {results.length === 0 && !loading ? (
-              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#444", textAlign: "center", minHeight: 400 }}>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>👤</div>
-                <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Your headshots will appear here</p>
-                <p style={{ margin: "8px 0 0", fontSize: 13 }}>Upload a photo and select styles to get started</p>
-                <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-                  {["LinkedIn headshots people pay $30-100 for", "Same quality as Remini & Lensa", "Runs on 121GB VRAM DGX Spark"].map((t) => (
-                    <div key={t} style={{ padding: "6px 12px", background: "#111", border: "1px solid #222", borderRadius: 20, fontSize: 12, color: "#666" }}>{t}</div>
+              <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-center">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 flex items-center justify-center mb-6">
+                  <svg className="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">Your headshots will appear here</h3>
+                <p className="text-gray-500 text-sm max-w-sm">
+                  Upload a photo and select your preferred styles to generate professional headshots instantly
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 mt-8">
+                  {["✨ Studio quality", "⚡ Ready in seconds", "🎨 Multiple styles"].map((t) => (
+                    <span key={t} className="px-3 py-1.5 bg-[#111] border border-[#222] rounded-full text-xs text-gray-500">{t}</span>
                   ))}
                 </div>
               </div>
             ) : (
-              <>
-                {results.length > 0 && (
-                  <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 14, color: "#888" }}>
-                      {doneCount}/{results.length} complete
-                      {doneCount < results.length && " · generating..."}
-                    </span>
-                    {doneCount > 0 && (
-                      <span style={{ fontSize: 12, color: "#7c3aed" }}>Click any image to download</span>
-                    )}
+              <div>
+                {/* Progress Bar */}
+                {results.length > 0 && doneCount < results.length && (
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-400">Generating headshots...</span>
+                      <span className="text-sm font-medium text-violet-400">{doneCount}/{results.length}</span>
+                    </div>
+                    <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
+
+                {/* Results Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {results.map((res, i) => (
-                    <div key={i} style={{ borderRadius: 12, overflow: "hidden", background: "#111", border: "1px solid #222", position: "relative" }}>
+                    <div key={i} className="group rounded-xl overflow-hidden bg-[#111] border border-[#1a1a1a] hover:border-[#333] transition">
                       {res.status === "done" && res.imageUrl ? (
-                        <a href={res.imageUrl} download={`headshot_${res.style}.jpg`} target="_blank" rel="noopener">
-                          <img
-                            src={res.imageUrl}
-                            alt={res.label}
-                            style={{ width: "100%", display: "block", aspectRatio: "2/3", objectFit: "cover" }}
-                          />
+                        <a href={res.imageUrl} download={`headshot_${res.style}.jpg`} target="_blank" rel="noopener" className="block">
+                          <div className="relative aspect-[3/4]">
+                            <img src={res.imageUrl} alt={res.label} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                              <span className="px-3 py-1.5 bg-white text-black rounded-lg text-sm font-medium">
+                                Download
+                              </span>
+                            </div>
+                          </div>
                         </a>
                       ) : (
-                        <div style={{ aspectRatio: "2/3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "linear-gradient(135deg, #111, #1a1a2e)" }}>
-                          <div style={{ width: 36, height: 36, border: "3px solid #7c3aed", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-                          <span style={{ fontSize: 12, color: "#666" }}>Generating...</span>
+                        <div className="aspect-[3/4] flex flex-col items-center justify-center bg-gradient-to-br from-[#111] to-[#1a1a2e]">
+                          <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mb-3" />
+                          <span className="text-xs text-gray-500">Creating magic...</span>
                         </div>
                       )}
-                      <div style={{ padding: "8px 12px", fontSize: 12, color: "#888", background: "#111" }}>
-                        {STYLES.find((s) => s.id === res.style)?.icon} {res.label}
+                      <div className="px-3 py-2.5 flex items-center gap-2 border-t border-[#1a1a1a]">
+                        <span>{STYLES.find((s) => s.id === res.style)?.icon}</span>
+                        <span className="text-sm text-gray-400">{res.label}</span>
+                        {res.status === "done" && (
+                          <svg className="w-4 h-4 text-green-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </>
+
+                {/* Download All */}
+                {doneCount === results.length && doneCount > 0 && (
+                  <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-white">All headshots ready! 🎉</p>
+                        <p className="text-sm text-gray-400">Click any image to download</p>
+                      </div>
+                      <button 
+                        onClick={() => results.forEach(r => r.imageUrl && window.open(r.imageUrl, '_blank'))}
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm font-medium transition"
+                      >
+                        Open All
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
-      </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+      </main>
     </div>
   );
 }
