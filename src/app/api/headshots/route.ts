@@ -41,8 +41,8 @@ function buildHeadshotWorkflow(
   seed: number
 ) {
   const s = HEADSHOT_STYLES[style] || HEADSHOT_STYLES.linkedin;
-  const fullPrompt = `RAW photo, ${s.prompt}, photorealistic, detailed skin texture, subsurface scattering, professional photography, DSLR`;
-  const negPrompt = "painting, cartoon, anime, deformed, extra limbs, bad anatomy, text, watermark, ugly, disfigured, low quality, blur, distorted face";
+  const fullPrompt = `RAW photo, same person, same face, ${s.prompt}, photorealistic, detailed skin texture, subsurface scattering, professional photography, DSLR, maintaining facial identity`;
+  const negPrompt = "painting, cartoon, anime, deformed, extra limbs, bad anatomy, text, watermark, ugly, disfigured, low quality, blur, distorted face, different person, wrong face, face swap, gender swap, female, woman";
 
   return {
     // Checkpoint + LoRA
@@ -78,8 +78,8 @@ function buildHeadshotWorkflow(
         ipadapter: ["4", 0],
         image: ["5", 0],
         clip_vision: ["3", 0],
-        weight: 0.85,
-        weight_type: "linear",
+        weight: 0.95,
+        weight_type: "style transfer",
         combine_embeds: "concat",
         start_at: 0.0,
         end_at: 1.0,
