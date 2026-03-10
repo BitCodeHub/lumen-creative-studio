@@ -38,39 +38,58 @@ const HEADSHOT_STYLES: Record<string, { prompt: string; label: string; icon: str
 function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: number) {
   const s = HEADSHOT_STYLES[style] || HEADSHOT_STYLES.linkedin;
   const positivePrompt = `RAW photo, ${s.prompt}, photorealistic, detailed skin texture, subsurface scattering, DSLR, sharp focus`;
-  const negativePrompt = "deformed, blurry, bad anatomy, extra limbs, text, watermark, ugly, disfigured, low quality, painting, cartoon, anime, gender swap, wrong gender, changed appearance";
+  const negativePrompt =
+    "deformed, blurry, bad anatomy, extra limbs, text, watermark, ugly, disfigured, low quality, painting, cartoon, anime, gender swap, wrong gender, changed appearance";
 
   return {
     // 1. Load checkpoint
-    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: "RealVisXL_V4.safetensors" } },
+    "1": {
+      class_type: "CheckpointLoaderSimple",
+      inputs: { ckpt_name: "RealVisXL_V4.safetensors" },
+    },
     // 2. Load LoRA
     "2": {
       class_type: "LoraLoader",
       inputs: {
-        model: ["1", 0], clip: ["1", 1],
+        model: ["1", 0],
+        clip: ["1", 1],
         lora_name: "lumen_headshots_v1.safetensors",
-        strength_model: 0.5, strength_clip: 0.5,
+        strength_model: 0.5,
+        strength_clip: 0.5,
       },
     },
-    // 3. Load reference image
-    "3": { class_type: "LoadImage", inputs: { image: uploadedFilename, upload: "image" } },
-    // 4. InstantID face analysis
+    // 3. Load reference image (uploaded by user)
+    "3": {
+      class_type: "LoadImage",
+      inputs: { image: uploadedFilename, upload: "image" },
+    },
+    // 4. InstantID Face Analysis
     "4": {
       class_type: "InstantIDFaceAnalysis",
       inputs: { provider: "CPU" },
     },
-    // 5. Load InstantID model
+    // 5. Load InstantID model (ip-adapter.bin)
     "5": {
       class_type: "InstantIDModelLoader",
       inputs: { instantid_file: "ip-adapter.bin" },
     },
-    // 6. Load ControlNet for InstantID
+    // 6. Load InstantID ControlNet
     "6": {
       class_type: "ControlNetLoader",
-      inputs: { control_net_name: "controlnet/controlnet-pose-sdxl-1.0.safetensors" },
+      inputs: { control_net_name: "instantid-controlnet.safetensors" },
     },
-    // 7. Apply InstantID — strong face lock
+    // 7. Positive prompt
     "7": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: positivePrompt, clip: ["2", 1] },
+    },
+    // 8. Negative prompt
+    "8": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: negativePrompt, clip: ["2", 1] },
+    },
+    // 9. Apply InstantID — strong face lock (weight=0.8)
+    "9": {
       class_type: "ApplyInstantID",
       inputs: {
         instantid: ["5", 0],
@@ -78,36 +97,44 @@ function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: n
         control_net: ["6", 0],
         image: ["3", 0],
         model: ["2", 0],
-        positive: ["8", 0],
-        negative: ["9", 0],
-        ip_weight: 0.8,
-        cn_strength: 0.8,
+        positive: ["7", 0],
+        negative: ["8", 0],
+        weight: 0.8,
         start_at: 0.0,
         end_at: 1.0,
-        noise: 0.35,
       },
     },
-    // 8. Text conditioning
-    "8": { class_type: "CLIPTextEncode", inputs: { text: positivePrompt, clip: ["2", 1] } },
-    "9": { class_type: "CLIPTextEncode", inputs: { text: negativePrompt, clip: ["2", 1] } },
-    // 10. Latent image
-    "10": { class_type: "EmptyLatentImage", inputs: { width: 832, height: 1216, batch_size: 1 } },
-    // 11. Sample
+    // 10. Latent image (portrait 832×1216)
+    "10": {
+      class_type: "EmptyLatentImage",
+      inputs: { width: 832, height: 1216, batch_size: 1 },
+    },
+    // 11. KSampler
     "11": {
       class_type: "KSampler",
       inputs: {
-        model: ["7", 0],
-        positive: ["7", 1],
-        negative: ["7", 2],
+        model: ["9", 0],
+        positive: ["9", 1],
+        negative: ["9", 2],
         latent_image: ["10", 0],
-        seed, steps: 30, cfg: 5.0,
+        seed,
+        steps: 30,
+        cfg: 5.0,
         sampler_name: "dpmpp_2m_sde",
         scheduler: "karras",
         denoise: 1.0,
       },
     },
-    "12": { class_type: "VAEDecode", inputs: { samples: ["11", 0], vae: ["1", 2] } },
-    "13": { class_type: "SaveImage", inputs: { images: ["12", 0], filename_prefix: "headshot" } },
+    // 12. VAE Decode
+    "12": {
+      class_type: "VAEDecode",
+      inputs: { samples: ["11", 0], vae: ["1", 2] },
+    },
+    // 13. Save Image
+    "13": {
+      class_type: "SaveImage",
+      inputs: { images: ["12", 0], filename_prefix: "headshot" },
+    },
   } as Record<string, any>;
 }
 
@@ -185,7 +212,10 @@ export async function POST(req: NextRequest) {
     const comfyFilename = await uploadImageToComfyUI(bytes, uploadFilename);
 
     if (!comfyFilename) {
-      return NextResponse.json({ error: "Failed to upload image to DGX — try again" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to upload image to DGX — try again" },
+        { status: 500 }
+      );
     }
 
     const jobs: { style: string; promptId: string; label: string; icon: string }[] = [];
@@ -195,16 +225,28 @@ export async function POST(req: NextRequest) {
       const workflow = buildInstantIDWorkflow(comfyFilename, style, seed);
       const promptId = await queuePrompt(workflow);
       if (promptId) {
-        jobs.push({ style, promptId, label: HEADSHOT_STYLES[style]?.label || style, icon: HEADSHOT_STYLES[style]?.icon || "📸" });
+        jobs.push({
+          style,
+          promptId,
+          label: HEADSHOT_STYLES[style]?.label || style,
+          icon: HEADSHOT_STYLES[style]?.icon || "📸",
+        });
       }
       await new Promise((r) => setTimeout(r, 100));
     }
 
     if (!jobs.length) {
-      return NextResponse.json({ error: "Failed to queue jobs — DGX may be busy, try again" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to queue jobs — DGX may be busy, try again" },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ jobs, message: `Generating ${jobs.length} headshots...`, refImage: comfyFilename });
+    return NextResponse.json({
+      jobs,
+      message: `Generating ${jobs.length} headshots...`,
+      refImage: comfyFilename,
+    });
   } catch (e: any) {
     console.error("Headshots error:", e);
     return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 });
