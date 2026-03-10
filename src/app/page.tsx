@@ -21,9 +21,17 @@ const MODELS = [
   { id: "sdxl", label: "SDXL" },
 ];
 
-const GAP = 8;
+const GAP = 6;
 
-// JS masonry: absolutely positions items into columns based on rendered image heights
+function getCols(w: number) {
+  if (w >= 1400) return 5;
+  if (w >= 1100) return 4;
+  if (w >= 750) return 3;
+  if (w >= 480) return 2;
+  return 2;
+}
+
+// True JS masonry — re-layouts every time ANY image loads
 function MasonryGrid({
   images,
   onSelect,
@@ -36,75 +44,69 @@ function MasonryGrid({
   onLike: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [positions, setPositions] = useState<{ x: number; y: number; w: number }[]>([]);
-  const [containerHeight, setContainerHeight] = useState(0);
-  const [cols, setCols] = useState(5);
   const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
-  const loadedCount = useRef(0);
-  const totalImages = images.length;
+  // Store aspect ratios per image id
+  const aspectMap = useRef<Record<string, number>>({});
+  const [, forceUpdate] = useState(0);
+  const positionsRef = useRef<{ x: number; y: number; w: number; h: number }[]>([]);
+  const containerHeightRef = useRef(0);
 
-  // Determine column count from container width
-  const getCols = (w: number) => {
-    if (w >= 1400) return 5;
-    if (w >= 1100) return 4;
-    if (w >= 750) return 3;
-    if (w >= 480) return 2;
-    return 2;
-  };
-
-  const layout = useCallback(() => {
+  const doLayout = useCallback(() => {
     if (!containerRef.current) return;
     const containerW = containerRef.current.offsetWidth;
+    if (!containerW) return;
     const numCols = getCols(containerW);
-    setCols(numCols);
-    const colW = (containerW - GAP * (numCols - 1)) / numCols;
+    const colW = Math.floor((containerW - GAP * (numCols - 1)) / numCols);
     const colHeights = new Array(numCols).fill(0);
-    const newPositions: { x: number; y: number; w: number }[] = [];
+    const newPos: typeof positionsRef.current = [];
 
-    images.forEach((_, i) => {
-      const img = imgRefs.current[i];
-      // Use natural aspect ratio if loaded, else guess 4:3 portrait
-      let imgH = colW * (4 / 3);
-      if (img && img.naturalWidth && img.naturalHeight) {
-        imgH = colW * (img.naturalHeight / img.naturalWidth);
-      }
-      // shortest column
+    images.forEach((img) => {
+      // Use cached aspect ratio if available, else default portrait 3:4
+      const ar = aspectMap.current[img.id] ?? (3 / 4);
+      const h = Math.round(colW * ar);
       const minCol = colHeights.indexOf(Math.min(...colHeights));
-      newPositions[i] = {
+      newPos.push({
         x: minCol * (colW + GAP),
         y: colHeights[minCol],
         w: colW,
-      };
-      colHeights[minCol] += imgH + GAP;
+        h,
+      });
+      colHeights[minCol] += h + GAP;
     });
 
-    setPositions(newPositions);
-    setContainerHeight(Math.max(...colHeights));
+    positionsRef.current = newPos;
+    containerHeightRef.current = Math.max(...colHeights, 0);
+    forceUpdate(n => n + 1);
   }, [images]);
 
-  // Re-layout on resize
+  // Layout on mount + resize
   useEffect(() => {
-    const ro = new ResizeObserver(() => layout());
+    doLayout();
+    const ro = new ResizeObserver(doLayout);
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, [layout]);
+  }, [doLayout]);
 
-  // Re-layout when images change
-  useEffect(() => {
-    loadedCount.current = 0;
-    layout();
-  }, [images, layout]);
+  // Re-layout when image list changes
+  useEffect(() => { doLayout(); }, [images, doLayout]);
 
-  const handleImageLoad = useCallback(() => {
-    loadedCount.current += 1;
-    // Re-layout once all images have loaded, and again on each load
-    layout();
-  }, [layout]);
+  const handleLoad = useCallback((img: GalleryImage, el: HTMLImageElement) => {
+    if (el.naturalWidth && el.naturalHeight) {
+      const ar = el.naturalHeight / el.naturalWidth;
+      if (aspectMap.current[img.id] !== ar) {
+        aspectMap.current[img.id] = ar;
+        doLayout();
+      }
+    }
+  }, [doLayout]);
+
+  const positions = positionsRef.current;
+  const containerH = containerHeightRef.current;
 
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", width: "100%", height: containerHeight || "auto", minHeight: 400 }}
+      style={{ position: "relative", width: "100%", height: containerH > 0 ? containerH : undefined, minHeight: 400 }}
     >
       {images.map((img, idx) => {
         const pos = positions[idx];
@@ -114,29 +116,27 @@ function MasonryGrid({
             className="gallery-card"
             onClick={() => onSelect(idx)}
             style={{
-              position: pos ? "absolute" : "relative",
+              position: "absolute",
               left: pos ? pos.x : 0,
-              top: pos ? pos.y : 0,
-              width: pos ? pos.w : "100%",
+              top: pos ? pos.y : idx * 200,
+              width: pos ? pos.w : "20%",
               borderRadius: 8,
               overflow: "hidden",
               background: "#161616",
               cursor: "pointer",
-              transition: pos ? "none" : undefined,
             }}
           >
             <img
               ref={el => { imgRefs.current[idx] = el; }}
               src={img.imageUrl}
               alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
-              loading="lazy"
-              onLoad={handleImageLoad}
-              style={{ width: "100%", display: "block", borderRadius: 8 }}
+              onLoad={e => handleLoad(img, e.currentTarget)}
               onError={e => {
-                const el = (e.target as HTMLImageElement).closest(".gallery-card") as HTMLElement;
-                if (el) el.style.display = "none";
-                handleImageLoad();
+                const card = (e.target as HTMLImageElement).closest(".gallery-card") as HTMLElement;
+                if (card) card.style.display = "none";
+                doLayout();
               }}
+              style={{ width: "100%", display: "block", borderRadius: 8 }}
             />
             <div className="gallery-overlay">
               <button
