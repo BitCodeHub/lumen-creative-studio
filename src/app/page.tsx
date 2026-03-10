@@ -1002,7 +1002,6 @@ export default function HomePage() {
             background: "rgba(14,14,16,0.97)", backdropFilter: "blur(24px)",
             border: "1.5px solid rgba(255,255,255,0.1)", borderRadius: 20,
             boxShadow: "0 16px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(77,159,255,0.1)",
-            overflow: "hidden",
           }}>
             <div style={{ display: "flex", gap: 12, padding: "14px 14px 10px", alignItems: "flex-start" }}>
               <button style={{
@@ -1068,10 +1067,10 @@ export default function HomePage() {
                   {/* Aspect ratio panel — opens upward from floating bar */}
                   {floatArPanelOpen && (
                     <div style={{
-                      position: "absolute", bottom: "calc(100% + 8px)", left: 0,
-                      background: "#1a1a1e", border: "1px solid #2a2a2a", borderRadius: 14,
-                      padding: "16px", zIndex: 300, minWidth: 360,
-                      boxShadow: "0 -8px 40px rgba(0,0,0,0.7)",
+                      position: "fixed", bottom: 160, left: "50%", transform: "translateX(-50%)",
+                      background: "#1a1a1e", border: "1px solid #333", borderRadius: 16,
+                      padding: "18px 20px", zIndex: 500, width: "min(520px, calc(100vw - 48px))",
+                      boxShadow: "0 -8px 60px rgba(0,0,0,0.85), 0 0 0 1px rgba(77,159,255,0.08)",
                     }}>
                       <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>Aspect ratio</p>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
