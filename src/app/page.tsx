@@ -582,37 +582,12 @@ export default function HomePage() {
             background: "#111", borderLeft: "1px solid #1e1e1e",
             display: "flex", flexDirection: "column", overflowY: "auto",
           }} onClick={e => e.stopPropagation()}>
-            <div style={{ height: 60 }} />
-
-            {/* Author */}
-            <div style={{ padding: "0 20px 16px", borderBottom: "1px solid #1a1a1a" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: "50%",
-                  background: "linear-gradient(135deg, #0066ff, #00aaff)",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}>
-                  <Sparkles size={14} color="white" />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ddd" }}>Lumen AI</div>
-                  <div style={{ fontSize: 11, color: "#555" }}>AI Generated</div>
-                </div>
-                <div style={{
-                  marginLeft: "auto",
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  background: "rgba(77,159,255,0.12)", borderRadius: 20, padding: "3px 10px",
-                }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4d9fff" }} />
-                  <span style={{ fontSize: 11, color: "#4d9fff", fontWeight: 500 }}>{selectedImg.model}</span>
-                </div>
-              </div>
-            </div>
+            <div style={{ height: 56 }} />
 
             {/* Thumbnail + actions */}
             <div style={{ padding: "16px 20px", borderBottom: "1px solid #1a1a1a" }}>
               <img src={selectedImg.imageUrl} alt="thumbnail"
-                style={{ width: "100%", borderRadius: 10, maxHeight: 260, objectFit: "cover", marginBottom: 12 }} />
+                style={{ width: "100%", borderRadius: 10, display: "block", objectFit: "contain", marginBottom: 12, background: "#0a0a0a" }} />
               <button onClick={() => { setPrompt(selectedImg.prompt); setSelectedIdx(null); setFloatingExpanded(true); }}
                 style={{
                   width: "100%", padding: "10px", borderRadius: 8,
