@@ -68,7 +68,7 @@ function buildHeadshotWorkflow(
     // Load uploaded reference image
     "5": {
       class_type: "LoadImage",
-      inputs: { image: uploadedFilename, upload: "image" },
+      inputs: { image: uploadedFilename },
     },
     // Apply IPAdapter
     "6": {
@@ -110,46 +110,75 @@ function buildHeadshotWorkflow(
   } as Record<string, any>;
 }
 
-async function uploadImageToComfyUI(imageBytes: ArrayBuffer, filename: string): Promise<string | null> {
+async function uploadImageToComfyUI(imageBytes: ArrayBuffer, filename: string): Promise<{ success: boolean; name?: string; error?: string }> {
   try {
-    const form = new FormData();
-    const blob = new Blob([imageBytes], { type: "image/jpeg" });
-    form.append("image", blob, filename);
-    form.append("type", "input");
-    form.append("overwrite", "true");
+    // Create FormData with explicit boundary handling
+    const boundary = `----WebKitFormBoundary${Math.random().toString(36).substring(2)}`;
+    const uint8Array = new Uint8Array(imageBytes);
+    
+    // Build multipart body manually for better compatibility
+    let body = '';
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="image"; filename="${filename}"\r\n`;
+    body += `Content-Type: image/jpeg\r\n\r\n`;
+    
+    // Convert to binary
+    const encoder = new TextEncoder();
+    const header = encoder.encode(body);
+    const footer = encoder.encode(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="type"\r\n\r\ninput\r\n--${boundary}\r\nContent-Disposition: form-data; name="overwrite"\r\n\r\ntrue\r\n--${boundary}--\r\n`);
+    
+    // Combine header + image bytes + footer
+    const fullBody = new Uint8Array(header.length + uint8Array.length + footer.length);
+    fullBody.set(header, 0);
+    fullBody.set(uint8Array, header.length);
+    fullBody.set(footer, header.length + uint8Array.length);
 
     const r = await fetch(`${COMFYUI_URL}/upload/image`, {
       method: "POST",
-      body: form,
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+      },
+      body: fullBody,
     });
 
+    const responseText = await r.text();
+    
     if (r.ok) {
-      const d = await r.json();
-      return d.name || filename;
+      try {
+        const d = JSON.parse(responseText);
+        return { success: true, name: d.name || filename };
+      } catch {
+        return { success: true, name: filename };
+      }
     }
-    console.error("Upload failed:", r.status, await r.text());
-  } catch (e) {
-    console.error("Upload error:", e);
+    return { success: false, error: `Upload failed: ${r.status} - ${responseText}` };
+  } catch (e: any) {
+    return { success: false, error: `Upload error: ${e.message}` };
   }
-  return null;
 }
 
-async function queuePrompt(workflow: Record<string, any>): Promise<string | null> {
+async function queuePrompt(workflow: Record<string, any>): Promise<{ success: boolean; promptId?: string; error?: string }> {
   try {
     const r = await fetch(`${COMFYUI_URL}/prompt`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: workflow }),
     });
+    
+    const responseText = await r.text();
+    
     if (r.ok) {
-      const d = await r.json();
-      return d.prompt_id || null;
+      try {
+        const d = JSON.parse(responseText);
+        return { success: true, promptId: d.prompt_id };
+      } catch {
+        return { success: false, error: `Invalid JSON response: ${responseText.substring(0, 200)}` };
+      }
     }
-    console.error("Queue failed:", r.status, await r.text());
-  } catch (e) {
-    console.error("Queue error:", e);
+    return { success: false, error: `Queue failed: ${r.status} - ${responseText.substring(0, 500)}` };
+  } catch (e: any) {
+    return { success: false, error: `Queue error: ${e.message}` };
   }
-  return null;
 }
 
 // GET — return available styles
@@ -160,60 +189,88 @@ export async function GET() {
       label: s.label,
       icon: s.icon,
     })),
+    comfyUrl: COMFYUI_URL, // Debug: show which URL is being used
   });
 }
 
 // POST — generate headshots
 export async function POST(req: NextRequest) {
+  const debugInfo: string[] = [];
+  
   try {
+    debugInfo.push(`COMFY_URL: ${COMFYUI_URL}`);
+    
     const formData = await req.formData();
     const file = formData.get("photo") as File | null;
     const stylesRaw = formData.get("styles") as string | null;
     const styles: string[] = stylesRaw ? JSON.parse(stylesRaw) : ["linkedin", "creative", "casual"];
 
     if (!file) {
-      return NextResponse.json({ error: "No photo uploaded" }, { status: 400 });
+      return NextResponse.json({ error: "No photo uploaded", debug: debugInfo }, { status: 400 });
     }
+
+    debugInfo.push(`File received: ${file.name}, size: ${file.size}, type: ${file.type}`);
+    debugInfo.push(`Styles requested: ${styles.join(", ")}`);
 
     const bytes = await file.arrayBuffer();
     const timestamp = Date.now();
     const uploadFilename = `headshot_ref_${timestamp}.jpg`;
 
     // Upload reference image to ComfyUI
-    const comfyFilename = await uploadImageToComfyUI(bytes, uploadFilename);
-    if (!comfyFilename) {
-      return NextResponse.json({ error: "Failed to upload image to DGX" }, { status: 500 });
+    const uploadResult = await uploadImageToComfyUI(bytes, uploadFilename);
+    debugInfo.push(`Upload result: ${JSON.stringify(uploadResult)}`);
+    
+    if (!uploadResult.success) {
+      return NextResponse.json({ 
+        error: "Failed to upload image to DGX", 
+        detail: uploadResult.error,
+        debug: debugInfo 
+      }, { status: 500 });
     }
+
+    const comfyFilename = uploadResult.name!;
+    debugInfo.push(`ComfyUI filename: ${comfyFilename}`);
 
     // Queue one job per style
     const jobs: { style: string; promptId: string; label: string; icon: string }[] = [];
+    const queueErrors: string[] = [];
 
     for (const style of styles.slice(0, 6)) {
       const seed = Math.floor(Math.random() * 999999999);
       const workflow = buildHeadshotWorkflow(comfyFilename, style, seed);
-      const promptId = await queuePrompt(workflow);
-      if (promptId) {
+      const queueResult = await queuePrompt(workflow);
+      
+      if (queueResult.success && queueResult.promptId) {
         jobs.push({
           style,
-          promptId,
+          promptId: queueResult.promptId,
           label: HEADSHOT_STYLES[style]?.label || style,
           icon: HEADSHOT_STYLES[style]?.icon || "📸",
         });
+        debugInfo.push(`Queued ${style}: ${queueResult.promptId}`);
+      } else {
+        queueErrors.push(`${style}: ${queueResult.error}`);
+        debugInfo.push(`Failed to queue ${style}: ${queueResult.error}`);
       }
       await new Promise((r) => setTimeout(r, 100));
     }
 
     if (!jobs.length) {
-      return NextResponse.json({ error: "Failed to queue jobs — DGX may be busy" }, { status: 500 });
+      return NextResponse.json({ 
+        error: "Failed to queue jobs", 
+        queueErrors,
+        debug: debugInfo 
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       jobs,
       message: `Generating ${jobs.length} headshots...`,
       refImage: comfyFilename,
+      debug: debugInfo,
     });
   } catch (e: any) {
-    console.error("Headshots POST error:", e);
-    return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 });
+    debugInfo.push(`Exception: ${e.message}`);
+    return NextResponse.json({ error: e.message || "Internal error", debug: debugInfo }, { status: 500 });
   }
 }
