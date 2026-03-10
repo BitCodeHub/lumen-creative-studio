@@ -214,8 +214,10 @@ export async function GET(request: NextRequest) {
         for (const nodeId in outputs) {
           if (outputs[nodeId].images?.[0]) {
             const image = outputs[nodeId].images[0];
-            const imageUrl = `${COMFYUI_URL}/view?filename=${encodeURIComponent(image.filename)}&subfolder=${encodeURIComponent(image.subfolder || "")}&type=${image.type}`;
-            return NextResponse.json({ status: "done", imageUrl });
+            // Return direct comfyui URL — proxied via /api/generate/image on client
+            const rawUrl = `${COMFYUI_URL}/view?filename=${encodeURIComponent(image.filename)}&subfolder=${encodeURIComponent(image.subfolder || "")}&type=${image.type}`;
+            const imageUrl = `/api/generate/image?src=${encodeURIComponent(rawUrl)}`;
+            return NextResponse.json({ status: "done", imageUrl, filename: image.filename });
           }
         }
       }
