@@ -164,6 +164,8 @@ function MasonryGrid({
                 <Heart size={12} color="white" fill={liked.has(img.id) ? "white" : "none"} />
               </button>
             </div>
+            {/* Watermark */}
+            <div style={{ position: "absolute", bottom: 7, right: 8, pointerEvents: "none", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.42)", letterSpacing: 0.4, textShadow: "0 1px 4px rgba(0,0,0,0.9)", userSelect: "none", zIndex: 3 }}>© Lumen</div>
           </div>
         );
       })}
