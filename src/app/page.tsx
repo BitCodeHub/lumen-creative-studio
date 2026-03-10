@@ -33,6 +33,8 @@ export default function HomePage() {
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [hovered, setHovered] = useState<string | null>(null);
   const [tab, setTab] = useState<"trends" | "shorts">("trends");
+  const [floatingExpanded, setFloatingExpanded] = useState(false);
+  const floatingRef = useRef<HTMLDivElement>(null);
 
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [page, setPage] = useState(1);
@@ -82,6 +84,17 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => { fetchGallery(1, true); }, []); // eslint-disable-line
+
+  // Close floating bar when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (floatingRef.current && !floatingRef.current.contains(e.target as Node)) {
+        setFloatingExpanded(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -188,77 +201,10 @@ export default function HomePage() {
 
         {activeNav === "explore" && (
           <>
-            <div style={{ textAlign: "center", padding: "32px 24px 20px" }}>
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: -0.3 }}>
-                Start Creating With <span style={{ color: "#4d9fff" }}>AI Image</span>
-                <span style={{ color: "#4d9fff", marginLeft: 3 }}>↓</span>
+            <div style={{ textAlign: "center", padding: "24px 24px 14px" }}>
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: -0.3 }}>
+                Explore <span style={{ color: "#4d9fff" }}>AI Gallery</span>
               </h1>
-            </div>
-
-            {/* Prompt box */}
-            <div style={{ maxWidth: 720, margin: "0 auto", width: "100%", padding: "0 20px 20px" }}>
-              <div style={{ background: "#161616", border: "1.5px solid #2a2a2a", borderRadius: 16,
-                boxShadow: "0 4px 24px rgba(0,0,0,0.35)" }}>
-                <div style={{ display: "flex", gap: 12, padding: "14px 14px 10px" }}>
-                  <button style={{ width: 52, height: 52, borderRadius: 10, border: "1.5px dashed #333",
-                    background: "#1e1e1e", display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", flexShrink: 0, color: "#555" }}>
-                    <Plus size={18} />
-                  </button>
-                  <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }}}
-                    placeholder="Describe the image you're imagining"
-                    style={{ flex: 1, border: "none", outline: "none", resize: "none", fontSize: 14.5,
-                      color: "#ddd", background: "transparent", fontFamily: "inherit",
-                      minHeight: 52, lineHeight: 1.5, paddingTop: 2 }} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "8px 14px 12px", flexWrap: "wrap", gap: 8 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
-                      borderRadius: 20, border: "1px solid #2a2a2a", background: "#1e1e1e",
-                      fontSize: 12.5, color: "#bbb", cursor: "pointer", fontWeight: 500 }}>
-                      <ImageIcon size={12} color="#4d9fff" />
-                      {MODELS.find(m => m.id === model)?.label}
-                      <ChevronDown size={11} color="#555" />
-                    </button>
-                    <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
-                      borderRadius: 20, border: "1px solid #2a2a2a", background: "#1e1e1e",
-                      fontSize: 12.5, color: "#bbb", cursor: "pointer" }}>
-                      <div style={{ width: 12, height: 12, border: "1.5px solid #555", borderRadius: 2 }} />
-                      Auto ratio
-                    </button>
-                    <button style={{ padding: "5px 10px", borderRadius: 20, border: "1px solid #2a2a2a",
-                      background: "#1e1e1e", fontSize: 12.5, color: "#bbb", cursor: "pointer" }}>
-                      High (2K)
-                    </button>
-                    <button style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #2a2a2a",
-                      background: "#1e1e1e", display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: "pointer", color: "#555" }}>
-                      <Settings size={12} />
-                    </button>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 12, color: "#444" }}>✦ 0/image</span>
-                    <button onClick={generate} disabled={isGenerating || !prompt.trim()}
-                      style={{ width: 34, height: 34, borderRadius: "50%",
-                        background: isGenerating || !prompt.trim() ? "#222" : "#0066ff",
-                        border: "none", display: "flex", alignItems: "center", justifyContent: "center",
-                        cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer", transition: "background 0.15s" }}>
-                      {isGenerating
-                        ? <Loader2 size={15} color="#555" style={{ animation: "spin 1s linear infinite" }} />
-                        : <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      }
-                    </button>
-                  </div>
-                </div>
-                {progress && <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #1e1e1e",
-                  fontSize: 12.5, color: "#666", display: "flex", gap: 7, alignItems: "center" }}>
-                  <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> {progress}
-                </div>}
-                {error && <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #2a1515",
-                  fontSize: 12.5, color: "#ff6b6b" }}>{error}</div>}
-              </div>
             </div>
 
             {/* Tabs */}
@@ -289,7 +235,7 @@ export default function HomePage() {
                 </button>
               </div>
             ) : (
-              <div style={{ padding: "14px 14px 60px", columns: "3 320px", gap: "10px" }}>
+              <div style={{ padding: "14px 14px 120px", columns: "3 320px", gap: "10px" }}>
                 {/* Skeleton placeholders while loading */}
                 {loadingGallery && images.length === 0 && Array.from({ length: 16 }).map((_, i) => (
                   <div key={`sk-${i}`} style={{ breakInside: "avoid", marginBottom: 8,
@@ -435,6 +381,134 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {/* Floating prompt bar — always visible, Dreamina-style */}
+      <div ref={floatingRef} style={{
+        position: "fixed",
+        bottom: 24,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "min(720px, calc(100vw - 96px))",
+        zIndex: 100,
+        transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+      }}>
+        {/* Collapsed: single-line pill */}
+        {!floatingExpanded && (
+          <div onClick={() => setFloatingExpanded(true)}
+            style={{
+              background: "rgba(18,18,20,0.92)",
+              backdropFilter: "blur(20px)",
+              border: "1.5px solid rgba(255,255,255,0.08)",
+              borderRadius: 50,
+              boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(77,159,255,0.08)",
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 12px 10px 16px",
+              cursor: "text",
+            }}>
+            <Wand2 size={15} color="#4d9fff" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, fontSize: 14, color: prompt ? "#ddd" : "#444", lineHeight: 1.4,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {prompt || "Describe the image you're imagining..."}
+            </span>
+            <button onClick={e => { e.stopPropagation(); if (prompt.trim()) generate(); else setFloatingExpanded(true); }}
+              disabled={isGenerating}
+              style={{
+                width: 36, height: 36, borderRadius: "50%", border: "none", flexShrink: 0,
+                background: isGenerating ? "#1e1e1e" : "linear-gradient(135deg, #0066ff, #0044bb)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: isGenerating ? "not-allowed" : "pointer",
+                boxShadow: "0 2px 10px rgba(0,102,255,0.35)",
+                transition: "all 0.15s",
+              }}>
+              {isGenerating
+                ? <Loader2 size={15} color="#555" style={{ animation: "spin 1s linear infinite" }} />
+                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              }
+            </button>
+          </div>
+        )}
+
+        {/* Expanded: full prompt box */}
+        {floatingExpanded && (
+          <div style={{
+            background: "rgba(16,16,18,0.96)",
+            backdropFilter: "blur(24px)",
+            border: "1.5px solid rgba(255,255,255,0.1)",
+            borderRadius: 20,
+            boxShadow: "0 16px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(77,159,255,0.1)",
+            overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", gap: 12, padding: "14px 14px 10px", alignItems: "flex-start" }}>
+              <button style={{ width: 40, height: 40, borderRadius: 10, border: "1.5px dashed #333",
+                background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", flexShrink: 0, color: "#555", marginTop: 2 }}>
+                <Plus size={16} />
+              </button>
+              <textarea
+                autoFocus
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); setFloatingExpanded(false); }}}
+                placeholder="Describe the image you're imagining..."
+                style={{ flex: 1, border: "none", outline: "none", resize: "none", fontSize: 14.5,
+                  color: "#ddd", background: "transparent", fontFamily: "inherit",
+                  minHeight: 56, maxHeight: 140, lineHeight: 1.55, paddingTop: 4 }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "6px 14px 12px", flexWrap: "wrap", gap: 8, borderTop: "1px solid #1a1a1a" }}>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+                  borderRadius: 20, border: "1px solid #2a2a2a", background: "#1a1a1a",
+                  fontSize: 12, color: "#bbb", cursor: "pointer", fontWeight: 500 }}>
+                  <ImageIcon size={11} color="#4d9fff" />
+                  {MODELS.find(m => m.id === model)?.label}
+                  <ChevronDown size={10} color="#555" />
+                </button>
+                <button style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+                  borderRadius: 20, border: "1px solid #2a2a2a", background: "#1a1a1a",
+                  fontSize: 12, color: "#bbb", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, border: "1.5px solid #555", borderRadius: 2 }} />
+                  Auto ratio
+                </button>
+                <button style={{ padding: "4px 10px", borderRadius: 20, border: "1px solid #2a2a2a",
+                  background: "#1a1a1a", fontSize: 12, color: "#bbb", cursor: "pointer" }}>
+                  High (2K)
+                </button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11.5, color: "#444" }}>✦ 0/image</span>
+                <button onClick={() => { generate(); setFloatingExpanded(false); }}
+                  disabled={isGenerating || !prompt.trim()}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 18px", borderRadius: 50, border: "none",
+                    background: isGenerating || !prompt.trim() ? "#1e1e1e" : "linear-gradient(135deg, #0066ff, #0044bb)",
+                    color: isGenerating || !prompt.trim() ? "#444" : "white",
+                    fontWeight: 600, fontSize: 13, cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer",
+                    boxShadow: isGenerating || !prompt.trim() ? "none" : "0 2px 12px rgba(0,102,255,0.4)",
+                    transition: "all 0.15s",
+                  }}>
+                  {isGenerating
+                    ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Generating...</>
+                    : <><Sparkles size={13} /> Generate</>}
+                </button>
+              </div>
+            </div>
+            {progress && (
+              <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #1a1a1a",
+                fontSize: 12.5, color: "#666", display: "flex", gap: 7, alignItems: "center" }}>
+                <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> {progress}
+              </div>
+            )}
+            {error && (
+              <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #2a1515",
+                fontSize: 12.5, color: "#ff6b6b" }}>{error}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <style jsx global>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
