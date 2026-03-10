@@ -39,9 +39,9 @@ const ASPECT_RATIOS = [
 // High 2K = 2x base dimensions (higher detail, slower)
 // Ultra 4K = 1x base generation + Real-ESRGAN 4x upscale on DGX
 const RES_TIERS = {
-  good:  { label: "Good",       mult: 1, upscale4k: false },
-  "2k":  { label: "High (2K)",  mult: 2, upscale4k: false },
-  "4k":  { label: "Ultra (4K)", mult: 1, upscale4k: true  },
+  good:  { label: "Good",       mult: 1, displayMult: 1, upscale4k: false },
+  "2k":  { label: "High (2K)",  mult: 2, displayMult: 2, upscale4k: false },
+  "4k":  { label: "Ultra (4K)", mult: 1, displayMult: 4, upscale4k: true  },
 } as const;
 type ResTier = keyof typeof RES_TIERS;
 
@@ -276,20 +276,20 @@ export default function HomePage() {
   // When AR preset selected, sync W/H based on current resolution mult
   const selectAR = (idx: number) => {
     const ar = ASPECT_RATIOS[idx];
-    const mult = RES_TIERS[resolution].mult;
+    const displayMult = RES_TIERS[resolution].displayMult;
     setSelectedAR(idx);
-    setImgW(ar.w * mult);
-    setImgH(ar.h * mult);
+    setImgW(ar.w * displayMult);
+    setImgH(ar.h * displayMult);
     setArLocked(true);
   };
 
   // When resolution tier changes, recalculate W/H from base AR
   const changeResolution = (res: ResTier) => {
-    const mult = RES_TIERS[res].mult;
+    const displayMult = RES_TIERS[res].displayMult;
     const ar = ASPECT_RATIOS[selectedAR];
     setResolution(res);
-    setImgW(ar.w * mult);
-    setImgH(ar.h * mult);
+    setImgW(ar.w * displayMult);
+    setImgH(ar.h * displayMult);
   };
 
   // When W changes with lock on, scale H proportionally
