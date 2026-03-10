@@ -204,6 +204,23 @@ export default function HomePage() {
 
   // Floating bar state
   const [floatingExpanded, setFloatingExpanded] = useState(false);
+
+  // Image protection
+  useEffect(() => {
+    const blockContextMenu = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.tagName === 'IMG' || t.closest('.gallery-card')) e.preventDefault();
+    };
+    const blockKeys = (e: KeyboardEvent) => {
+      if (e.ctrlKey && ['s','S','u','U','p','P'].includes(e.key)) e.preventDefault();
+    };
+    document.addEventListener('contextmenu', blockContextMenu);
+    document.addEventListener('keydown', blockKeys);
+    return () => {
+      document.removeEventListener('contextmenu', blockContextMenu);
+      document.removeEventListener('keydown', blockKeys);
+    };
+  }, []);
   const floatingRef = useRef<HTMLDivElement>(null);
 
   // Detail view state
@@ -1065,6 +1082,17 @@ export default function HomePage() {
           background: #161616;
           cursor: pointer;
           transition: transform 0.2s ease;
+        }
+        /* Image protection */
+        .gallery-card img {
+          -webkit-user-select: none;
+          user-select: none;
+          pointer-events: none;
+          -webkit-touch-callout: none;
+        }
+        .no-select {
+          -webkit-user-select: none;
+          user-select: none;
         }
         .gallery-card:hover { transform: scale(1.02); z-index: 2; }
 
