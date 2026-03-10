@@ -415,7 +415,7 @@ export default function HomePage() {
                 background: "rgba(22,22,26,0.95)",
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 14,
-                overflow: "hidden",
+                position: "relative",
               }}>
                 {/* Text area row */}
                 <div style={{ display: "flex", gap: 12, padding: "14px 16px 10px", alignItems: "flex-start" }}>
