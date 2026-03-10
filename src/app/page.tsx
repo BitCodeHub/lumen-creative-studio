@@ -21,6 +21,138 @@ const MODELS = [
   { id: "sdxl", label: "SDXL" },
 ];
 
+const GAP = 8;
+
+// JS masonry: absolutely positions items into columns based on rendered image heights
+function MasonryGrid({
+  images,
+  onSelect,
+  liked,
+  onLike,
+}: {
+  images: GalleryImage[];
+  onSelect: (idx: number) => void;
+  liked: Set<string>;
+  onLike: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [positions, setPositions] = useState<{ x: number; y: number; w: number }[]>([]);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [cols, setCols] = useState(5);
+  const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
+  const loadedCount = useRef(0);
+  const totalImages = images.length;
+
+  // Determine column count from container width
+  const getCols = (w: number) => {
+    if (w >= 1400) return 5;
+    if (w >= 1100) return 4;
+    if (w >= 750) return 3;
+    if (w >= 480) return 2;
+    return 2;
+  };
+
+  const layout = useCallback(() => {
+    if (!containerRef.current) return;
+    const containerW = containerRef.current.offsetWidth;
+    const numCols = getCols(containerW);
+    setCols(numCols);
+    const colW = (containerW - GAP * (numCols - 1)) / numCols;
+    const colHeights = new Array(numCols).fill(0);
+    const newPositions: { x: number; y: number; w: number }[] = [];
+
+    images.forEach((_, i) => {
+      const img = imgRefs.current[i];
+      // Use natural aspect ratio if loaded, else guess 4:3 portrait
+      let imgH = colW * (4 / 3);
+      if (img && img.naturalWidth && img.naturalHeight) {
+        imgH = colW * (img.naturalHeight / img.naturalWidth);
+      }
+      // shortest column
+      const minCol = colHeights.indexOf(Math.min(...colHeights));
+      newPositions[i] = {
+        x: minCol * (colW + GAP),
+        y: colHeights[minCol],
+        w: colW,
+      };
+      colHeights[minCol] += imgH + GAP;
+    });
+
+    setPositions(newPositions);
+    setContainerHeight(Math.max(...colHeights));
+  }, [images]);
+
+  // Re-layout on resize
+  useEffect(() => {
+    const ro = new ResizeObserver(() => layout());
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [layout]);
+
+  // Re-layout when images change
+  useEffect(() => {
+    loadedCount.current = 0;
+    layout();
+  }, [images, layout]);
+
+  const handleImageLoad = useCallback(() => {
+    loadedCount.current += 1;
+    // Re-layout once all images have loaded, and again on each load
+    layout();
+  }, [layout]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height: containerHeight || "auto", minHeight: 400 }}
+    >
+      {images.map((img, idx) => {
+        const pos = positions[idx];
+        return (
+          <div
+            key={img.id}
+            className="gallery-card"
+            onClick={() => onSelect(idx)}
+            style={{
+              position: pos ? "absolute" : "relative",
+              left: pos ? pos.x : 0,
+              top: pos ? pos.y : 0,
+              width: pos ? pos.w : "100%",
+              borderRadius: 8,
+              overflow: "hidden",
+              background: "#161616",
+              cursor: "pointer",
+              transition: pos ? "none" : undefined,
+            }}
+          >
+            <img
+              ref={el => { imgRefs.current[idx] = el; }}
+              src={img.imageUrl}
+              alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
+              loading="lazy"
+              onLoad={handleImageLoad}
+              style={{ width: "100%", display: "block", borderRadius: 8 }}
+              onError={e => {
+                const el = (e.target as HTMLImageElement).closest(".gallery-card") as HTMLElement;
+                if (el) el.style.display = "none";
+                handleImageLoad();
+              }}
+            />
+            <div className="gallery-overlay">
+              <button
+                className="like-btn"
+                onClick={e => { e.stopPropagation(); onLike(img.id); }}
+              >
+                <Heart size={12} color="white" fill={liked.has(img.id) ? "white" : "none"} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [activeNav, setActiveNav] = useState<"explore" | "create">("explore");
   const [prompt, setPrompt] = useState("");
@@ -111,7 +243,7 @@ export default function HomePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Close detail on Escape, navigate with arrow keys
+  // Keyboard nav for detail view
   useEffect(() => {
     if (selectedIdx === null) return;
     const handler = (e: KeyboardEvent) => {
@@ -215,7 +347,7 @@ export default function HomePage() {
       </aside>
 
       {/* Main content */}
-      <main style={{ marginLeft: 64, flex: 1 }}>
+      <main style={{ marginLeft: 64, flex: 1, overflowX: "hidden" }}>
 
         {activeNav === "explore" && (
           <>
@@ -244,7 +376,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* ===== 5-COLUMN MASONRY GALLERY (Dreamina-style) ===== */}
+            {/* Gallery */}
             {galleryError && images.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", color: "#444" }}>
                 <p style={{ marginBottom: 6, fontSize: 14, color: "#666" }}>Gallery temporarily unavailable</p>
@@ -258,36 +390,29 @@ export default function HomePage() {
                 </button>
               </div>
             ) : (
-              <div className="masonry-grid">
-                {loadingGallery && images.length === 0 && Array.from({ length: 25 }).map((_, i) => (
-                  <div key={`sk-${i}`} className="masonry-item" style={{
-                    borderRadius: 8, background: "#161616",
-                    height: [240, 320, 200, 280, 220, 360, 240, 300, 200, 320,
-                      260, 340, 220, 290, 200, 310, 250, 380, 210, 280, 300, 240, 320, 200, 260][i],
-                    animation: "pulse 1.6s ease-in-out infinite"
-                  }} />
-                ))}
-                {images.map((img, idx) => (
-                  <div key={img.id}
-                    className="masonry-item gallery-card"
-                    onClick={() => setSelectedIdx(idx)}>
-                    <img
-                      src={img.imageUrl}
-                      alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
-                      loading="lazy"
-                      style={{ width: "100%", display: "block", borderRadius: 8 }}
-                      onError={e => { (e.target as HTMLImageElement).closest(".masonry-item")!.style.display = "none"; }}
-                    />
-                    {/* Hover overlay */}
-                    <div className="gallery-overlay">
-                      <button
-                        className="like-btn"
-                        onClick={e => { e.stopPropagation(); toggleLike(img.id); }}>
-                        <Heart size={12} color="white" fill={liked.has(img.id) ? "white" : "none"} />
-                      </button>
-                    </div>
+              <div style={{ padding: "14px 8px 140px 8px" }}>
+                {loadingGallery && images.length === 0 ? (
+                  // Skeleton placeholders using CSS columns (fine for skeletons, no staggering needed)
+                  <div style={{ columns: 5, columnGap: GAP }}>
+                    {Array.from({ length: 25 }).map((_, i) => (
+                      <div key={`sk-${i}`} style={{
+                        breakInside: "avoid", marginBottom: GAP,
+                        borderRadius: 8, background: "#161616",
+                        height: [240, 320, 200, 280, 220, 360, 240, 300, 200, 320,
+                          260, 340, 220, 290, 200, 310, 250, 380, 210, 280,
+                          300, 240, 320, 200, 260][i],
+                        animation: "pulse 1.6s ease-in-out infinite"
+                      }} />
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <MasonryGrid
+                    images={images}
+                    onSelect={setSelectedIdx}
+                    liked={liked}
+                    onLike={toggleLike}
+                  />
+                )}
               </div>
             )}
 
@@ -386,7 +511,7 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* ===== DETAIL VIEW (Dreamina-style full screen) ===== */}
+      {/* ===== DETAIL VIEW (Dreamina-style) ===== */}
       {selectedImg && (
         <div
           style={{
@@ -396,16 +521,14 @@ export default function HomePage() {
           }}
           onClick={() => setSelectedIdx(null)}
         >
-          {/* Close button */}
-          <button
-            onClick={() => setSelectedIdx(null)}
-            style={{
-              position: "absolute", top: 16, right: 16,
-              width: 36, height: 36, borderRadius: "50%",
-              border: "none", background: "rgba(255,255,255,0.1)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", color: "#ccc", zIndex: 10,
-            }}>
+          {/* Close */}
+          <button onClick={() => setSelectedIdx(null)} style={{
+            position: "absolute", top: 16, right: 16,
+            width: 36, height: 36, borderRadius: "50%",
+            border: "none", background: "rgba(255,255,255,0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", color: "#ccc", zIndex: 10,
+          }}>
             <X size={16} />
           </button>
 
@@ -421,72 +544,53 @@ export default function HomePage() {
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: selectedIdx === 0 ? "not-allowed" : "pointer",
               zIndex: 10, backdropFilter: "blur(8px)",
-              transition: "background 0.15s",
             }}>
             <ChevronLeft size={22} />
           </button>
 
-          {/* Right arrow */}
+          {/* Right arrow (stops before the detail panel) */}
           <button
             onClick={e => { e.stopPropagation(); setSelectedIdx(i => i !== null && i < images.length - 1 ? i + 1 : i); }}
             disabled={selectedIdx === images.length - 1}
             style={{
-              position: "absolute", right: 380, top: "50%", transform: "translateY(-50%)",
+              position: "absolute", right: 376, top: "50%", transform: "translateY(-50%)",
               width: 44, height: 44, borderRadius: "50%", border: "none",
               background: selectedIdx === images.length - 1 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.12)",
               color: selectedIdx === images.length - 1 ? "#333" : "#fff",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: selectedIdx === images.length - 1 ? "not-allowed" : "pointer",
               zIndex: 10, backdropFilter: "blur(8px)",
-              transition: "background 0.15s",
             }}>
             <ChevronRight size={22} />
           </button>
 
-          {/* Main image area */}
-          <div
-            style={{
-              flex: 1,
-              height: "100vh",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "24px 80px 24px 80px",
-              marginRight: 360,
-            }}
-            onClick={e => e.stopPropagation()}
-          >
+          {/* Image area */}
+          <div style={{
+            flex: 1, height: "100vh",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "24px 80px",
+            marginRight: 360,
+          }} onClick={e => e.stopPropagation()}>
             <img
               src={selectedImg.imageUrl}
               alt={selectedImg.prompt ? selectedImg.prompt.slice(0, 80) : "AI image"}
               style={{
-                maxHeight: "calc(100vh - 48px)",
-                maxWidth: "100%",
-                borderRadius: 12,
-                objectFit: "contain",
+                maxHeight: "calc(100vh - 48px)", maxWidth: "100%",
+                borderRadius: 12, objectFit: "contain",
                 boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
               }}
             />
           </div>
 
           {/* Right panel */}
-          <div
-            style={{
-              position: "fixed",
-              right: 0, top: 0, bottom: 0,
-              width: 360,
-              background: "#111",
-              borderLeft: "1px solid #1e1e1e",
-              display: "flex",
-              flexDirection: "column",
-              overflowY: "auto",
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Panel top padding for close button */}
+          <div style={{
+            position: "fixed", right: 0, top: 0, bottom: 0, width: 360,
+            background: "#111", borderLeft: "1px solid #1e1e1e",
+            display: "flex", flexDirection: "column", overflowY: "auto",
+          }} onClick={e => e.stopPropagation()}>
             <div style={{ height: 60 }} />
 
-            {/* Author area (placeholder) */}
+            {/* Author */}
             <div style={{ padding: "0 20px 16px", borderBottom: "1px solid #1a1a1a" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
@@ -500,12 +604,10 @@ export default function HomePage() {
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#ddd" }}>Lumen AI</div>
                   <div style={{ fontSize: 11, color: "#555" }}>AI Generated</div>
                 </div>
-                {/* Model badge */}
                 <div style={{
                   marginLeft: "auto",
                   display: "inline-flex", alignItems: "center", gap: 5,
-                  background: "rgba(77,159,255,0.12)", borderRadius: 20,
-                  padding: "3px 10px",
+                  background: "rgba(77,159,255,0.12)", borderRadius: 20, padding: "3px 10px",
                 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4d9fff" }} />
                   <span style={{ fontSize: 11, color: "#4d9fff", fontWeight: 500 }}>{selectedImg.model}</span>
@@ -513,36 +615,21 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Image preview thumbnail + actions */}
+            {/* Thumbnail + actions */}
             <div style={{ padding: "16px 20px", borderBottom: "1px solid #1a1a1a" }}>
-              <img
-                src={selectedImg.imageUrl}
-                alt="thumbnail"
-                style={{
-                  width: "100%", borderRadius: 10,
-                  maxHeight: 280, objectFit: "cover",
-                  marginBottom: 12,
-                }}
-              />
-              {/* Action buttons */}
-              <button
-                onClick={() => {
-                  setPrompt(selectedImg.prompt);
-                  setSelectedIdx(null);
-                  setFloatingExpanded(true);
-                }}
+              <img src={selectedImg.imageUrl} alt="thumbnail"
+                style={{ width: "100%", borderRadius: 10, maxHeight: 260, objectFit: "cover", marginBottom: 12 }} />
+              <button onClick={() => { setPrompt(selectedImg.prompt); setSelectedIdx(null); setFloatingExpanded(true); }}
                 style={{
                   width: "100%", padding: "10px", borderRadius: 8,
                   background: "#0066ff", border: "none",
                   color: "white", fontWeight: 600, fontSize: 14, cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  marginBottom: 8,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8,
                 }}>
                 <Sparkles size={14} /> Use prompt
               </button>
               <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={() => copyPrompt(selectedImg.id, selectedImg.prompt)}
+                <button onClick={() => copyPrompt(selectedImg.id, selectedImg.prompt)}
                   style={{
                     flex: 1, padding: "8px", borderRadius: 8,
                     border: "1px solid #2a2a2a", background: "#161616",
@@ -552,9 +639,7 @@ export default function HomePage() {
                   {copied === selectedImg.id ? <Check size={13} color="#4dff91" /> : <Copy size={13} />}
                   {copied === selectedImg.id ? "Copied!" : "Copy prompt"}
                 </button>
-                <a
-                  href={selectedImg.imageUrl}
-                  download="image.jpg"
+                <a href={selectedImg.imageUrl} download="image.jpg"
                   style={{
                     flex: 1, padding: "8px", borderRadius: 8,
                     border: "1px solid #2a2a2a", background: "#161616",
@@ -567,30 +652,22 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Prompt section */}
+            {/* Prompt */}
             <div style={{ padding: "16px 20px", flex: 1 }}>
-              <p style={{
-                fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase",
-                letterSpacing: 0.6, marginBottom: 10,
-              }}>
-                Prompt
-              </p>
-              <p style={{
-                fontSize: 13.5, color: "#bbb", lineHeight: 1.7,
-              }}>
+              <p style={{ fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase",
+                letterSpacing: 0.6, marginBottom: 10 }}>Prompt</p>
+              <p style={{ fontSize: 13.5, color: "#bbb", lineHeight: 1.7 }}>
                 {selectedImg.prompt || "No prompt available"}
               </p>
             </div>
 
-            {/* Like button at bottom */}
+            {/* Like */}
             <div style={{ padding: "16px 20px", borderTop: "1px solid #1a1a1a" }}>
-              <button
-                onClick={() => toggleLike(selectedImg.id)}
+              <button onClick={() => toggleLike(selectedImg.id)}
                 style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
                   borderRadius: 8, border: "1px solid #2a2a2a", background: "#161616",
-                  color: liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa",
-                  fontSize: 13, cursor: "pointer",
+                  color: liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa", fontSize: 13, cursor: "pointer",
                 }}>
                 <Heart size={14} fill={liked.has(selectedImg.id) ? "#ff6b6b" : "none"}
                   color={liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa"} />
@@ -603,36 +680,24 @@ export default function HomePage() {
 
       {/* ===== FLOATING PROMPT BAR ===== */}
       <div ref={floatingRef} style={{
-        position: "fixed",
-        bottom: 24,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "min(720px, calc(100vw - 96px))",
-        zIndex: 100,
+        position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+        width: "min(720px, calc(100vw - 96px))", zIndex: 100,
         transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
       }}>
         {!floatingExpanded && (
-          <div onClick={() => setFloatingExpanded(true)}
-            style={{
-              background: "rgba(18,18,20,0.93)",
-              backdropFilter: "blur(20px)",
-              border: "1.5px solid rgba(255,255,255,0.09)",
-              borderRadius: 50,
-              boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(77,159,255,0.07)",
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 12px 10px 18px",
-              cursor: "text",
-            }}>
+          <div onClick={() => setFloatingExpanded(true)} style={{
+            background: "rgba(18,18,20,0.93)", backdropFilter: "blur(20px)",
+            border: "1.5px solid rgba(255,255,255,0.09)", borderRadius: 50,
+            boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(77,159,255,0.07)",
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 12px 10px 18px", cursor: "text",
+          }}>
             <Wand2 size={15} color="#4d9fff" style={{ flexShrink: 0 }} />
-            <span style={{
-              flex: 1, fontSize: 14, color: prompt ? "#ccc" : "#444",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
+            <span style={{ flex: 1, fontSize: 14, color: prompt ? "#ccc" : "#444",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {prompt || "Describe the image you're imagining..."}
             </span>
-            {isGenerating && (
-              <span style={{ fontSize: 12, color: "#666", marginRight: 4 }}>{progress}</span>
-            )}
+            {isGenerating && <span style={{ fontSize: 12, color: "#666", marginRight: 4 }}>{progress}</span>}
             <button
               onClick={e => { e.stopPropagation(); if (prompt.trim()) generate(); else setFloatingExpanded(true); }}
               disabled={isGenerating}
@@ -642,24 +707,20 @@ export default function HomePage() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: isGenerating ? "not-allowed" : "pointer",
                 boxShadow: "0 2px 10px rgba(0,102,255,0.35)",
-                transition: "all 0.15s",
               }}>
               {isGenerating
                 ? <Loader2 size={15} color="#555" style={{ animation: "spin 1s linear infinite" }} />
                 : <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                   <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              }
+                </svg>}
             </button>
           </div>
         )}
 
         {floatingExpanded && (
           <div style={{
-            background: "rgba(14,14,16,0.97)",
-            backdropFilter: "blur(24px)",
-            border: "1.5px solid rgba(255,255,255,0.1)",
-            borderRadius: 20,
+            background: "rgba(14,14,16,0.97)", backdropFilter: "blur(24px)",
+            border: "1.5px solid rgba(255,255,255,0.1)", borderRadius: 20,
             boxShadow: "0 16px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(77,159,255,0.1)",
             overflow: "hidden",
           }}>
@@ -671,20 +732,14 @@ export default function HomePage() {
               }}>
                 <Plus size={16} />
               </button>
-              <textarea
-                autoFocus
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }
-                }}
+              <textarea autoFocus value={prompt} onChange={e => setPrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
                 placeholder="Describe the image you're imagining..."
                 style={{
                   flex: 1, border: "none", outline: "none", resize: "none", fontSize: 14.5,
                   color: "#ddd", background: "transparent", fontFamily: "inherit",
                   minHeight: 56, maxHeight: 140, lineHeight: 1.55, paddingTop: 4
-                }}
-              />
+                }} />
             </div>
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -711,15 +766,11 @@ export default function HomePage() {
                 <button style={{
                   padding: "4px 10px", borderRadius: 20, border: "1px solid #2a2a2a",
                   background: "#1a1a1a", fontSize: 12, color: "#bbb", cursor: "pointer"
-                }}>
-                  High (2K)
-                </button>
+                }}>High (2K)</button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 11.5, color: "#444" }}>✦ 0/image</span>
-                <button
-                  onClick={() => generate()}
-                  disabled={isGenerating || !prompt.trim()}
+                <button onClick={() => generate()} disabled={isGenerating || !prompt.trim()}
                   style={{
                     display: "flex", alignItems: "center", gap: 6,
                     padding: "7px 18px", borderRadius: 50, border: "none",
@@ -727,7 +778,6 @@ export default function HomePage() {
                     color: isGenerating || !prompt.trim() ? "#444" : "white",
                     fontWeight: 600, fontSize: 13, cursor: isGenerating || !prompt.trim() ? "not-allowed" : "pointer",
                     boxShadow: isGenerating || !prompt.trim() ? "none" : "0 2px 12px rgba(0,102,255,0.4)",
-                    transition: "all 0.15s",
                   }}>
                   {isGenerating
                     ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> {progress || "Generating..."}</>
@@ -736,10 +786,8 @@ export default function HomePage() {
               </div>
             </div>
             {error && (
-              <div style={{
-                padding: "8px 14px 10px", borderTop: "1px solid #2a1515",
-                fontSize: 12.5, color: "#ff6b6b"
-              }}>{error}</div>
+              <div style={{ padding: "8px 14px 10px", borderTop: "1px solid #2a1515",
+                fontSize: 12.5, color: "#ff6b6b" }}>{error}</div>
             )}
           </div>
         )}
@@ -755,79 +803,34 @@ export default function HomePage() {
         ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
         textarea::placeholder { color: #444; }
 
-        /* 5-column masonry grid */
-        .masonry-grid {
-          padding: 14px 8px 140px;
-          columns: 5;
-          column-gap: 8px;
-        }
-
-        .masonry-item {
-          break-inside: avoid;
-          margin-bottom: 8px;
+        .gallery-card {
           border-radius: 8px;
           overflow: hidden;
-          position: relative;
           background: #161616;
           cursor: pointer;
-        }
-
-        /* Hover card scale */
-        .gallery-card {
           transition: transform 0.2s ease;
         }
-        .gallery-card:hover {
-          transform: scale(1.02);
-          z-index: 1;
-        }
+        .gallery-card:hover { transform: scale(1.02); z-index: 2; }
 
-        /* Hover overlay */
         .gallery-overlay {
           position: absolute;
           inset: 0;
           border-radius: 8px;
-          background: rgba(0,0,0,0);
-          transition: background 0.2s;
+          opacity: 0;
+          background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+          transition: opacity 0.2s;
           display: flex;
           align-items: flex-end;
           padding: 6px;
-          opacity: 0;
-          transition: opacity 0.2s;
         }
-        .gallery-card:hover .gallery-overlay {
-          opacity: 1;
-          background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
-        }
+        .gallery-card:hover .gallery-overlay { opacity: 1; }
 
         .like-btn {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          border: none;
-          background: rgba(0,0,0,0.5);
-          backdrop-filter: blur(4px);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-left: auto;
-          color: white;
-        }
-
-        /* Responsive masonry */
-        @media (max-width: 1400px) {
-          .masonry-grid { columns: 5; }
-        }
-        @media (max-width: 1100px) {
-          .masonry-grid { columns: 4; }
-        }
-        @media (max-width: 800px) {
-          .masonry-grid { columns: 3; }
-          aside { width: 52px !important; }
-          main { margin-left: 52px !important; }
-        }
-        @media (max-width: 500px) {
-          .masonry-grid { columns: 2; }
+          width: 28px; height: 28px; border-radius: 50%;
+          border: none; background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(4px); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          margin-left: auto; color: white;
         }
       `}</style>
     </div>
