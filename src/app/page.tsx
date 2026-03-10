@@ -485,12 +485,12 @@ export default function HomePage() {
                         <ChevronDown size={10} color="currentColor" />
                       </button>
 
-                      {/* Aspect ratio panel */}
+                      {/* Aspect ratio panel — opens downward */}
                       {arPanelOpen && (
                         <div style={{
-                          position: "absolute", bottom: "calc(100% + 8px)", left: 0,
+                          position: "absolute", top: "calc(100% + 8px)", left: 0,
                           background: "#1a1a1e", border: "1px solid #2a2a2a", borderRadius: 14,
-                          padding: "16px", zIndex: 300, minWidth: 340,
+                          padding: "16px", zIndex: 300, minWidth: 360,
                           boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
                         }}>
                           {/* Aspect ratio presets */}
