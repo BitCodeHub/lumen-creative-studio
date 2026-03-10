@@ -31,12 +31,12 @@ function getCols(w: number) {
   return 2;
 }
 
-// Stable aspect ratio variants per index — creates natural height variety
-// These represent h/w ratios: >1 = portrait-tall, <1 = landscape-wide
-const AR_VARIANTS = [1.35, 0.75, 1.6, 1.0, 0.8, 1.45, 1.1, 0.85, 1.55, 0.7, 1.25, 1.5, 0.9, 1.3, 0.65];
+// AR_VARIANTS forces stagger regardless of actual image dimensions.
+// Since all our images are same-ratio portraits (832×1216), we must
+// assign varied heights artificially — like Dreamina does with mixed content.
+// Pattern mixes portrait-tall (>1.2), square-ish (~1.0), and mid-height (0.7-0.9)
+const AR_VARIANTS = [1.4, 0.72, 1.65, 1.05, 0.78, 1.5, 1.15, 0.85, 1.6, 0.68, 1.3, 1.55, 0.92, 1.35, 0.75, 1.45, 0.82, 1.2, 0.7, 1.58];
 
-// JS masonry: positions absolutely using real image aspect ratios
-// Falls back to AR_VARIANTS until image loads, then updates with real ratio
 function MasonryGrid({
   images,
   onSelect,
@@ -49,8 +49,7 @@ function MasonryGrid({
   onLike: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const aspectMap = useRef<Record<string, number>>({});
-  const [positions, setPositions] = useState<{ x: number; y: number; w: number }[]>([]);
+  const [positions, setPositions] = useState<{ x: number; y: number; w: number; h: number }[]>([]);
   const [containerHeight, setContainerHeight] = useState(0);
 
   const doLayout = useCallback(() => {
@@ -60,14 +59,13 @@ function MasonryGrid({
     const numCols = getCols(containerW);
     const colW = Math.floor((containerW - GAP * (numCols - 1)) / numCols);
     const colHeights = new Array(numCols).fill(0);
-    const newPos: { x: number; y: number; w: number }[] = [];
+    const newPos: { x: number; y: number; w: number; h: number }[] = [];
 
-    images.forEach((img, idx) => {
-      // Use real aspect ratio if loaded, else use variant pattern
-      const ar = aspectMap.current[img.id] ?? AR_VARIANTS[idx % AR_VARIANTS.length];
+    images.forEach((_, idx) => {
+      const ar = AR_VARIANTS[idx % AR_VARIANTS.length];
       const h = Math.round(colW * ar);
       const minCol = colHeights.indexOf(Math.min(...colHeights));
-      newPos.push({ x: minCol * (colW + GAP), y: colHeights[minCol], w: colW });
+      newPos.push({ x: minCol * (colW + GAP), y: colHeights[minCol], w: colW, h });
       colHeights[minCol] += h + GAP;
     });
 
@@ -82,16 +80,6 @@ function MasonryGrid({
     return () => ro.disconnect();
   }, [doLayout]);
 
-  const handleLoad = useCallback((id: string, el: HTMLImageElement) => {
-    if (el.naturalWidth && el.naturalHeight) {
-      const ar = el.naturalHeight / el.naturalWidth;
-      if (aspectMap.current[id] !== ar) {
-        aspectMap.current[id] = ar;
-        doLayout();
-      }
-    }
-  }, [doLayout]);
-
   return (
     <div
       ref={containerRef}
@@ -99,11 +87,6 @@ function MasonryGrid({
     >
       {images.map((img, idx) => {
         const pos = positions[idx];
-        // Use real aspect ratio if cached, else variant
-        const ar = aspectMap.current[img.id] ?? AR_VARIANTS[idx % AR_VARIANTS.length];
-        const colW = pos?.w ?? 0;
-        const cardH = colW ? Math.round(colW * ar) : undefined;
-
         return (
           <div
             key={img.id}
@@ -114,7 +97,7 @@ function MasonryGrid({
               left: pos ? pos.x : 0,
               top: pos ? pos.y : idx * 220,
               width: pos ? pos.w : "20%",
-              height: cardH,
+              height: pos ? pos.h : 220,
               borderRadius: 8,
               overflow: "hidden",
               background: "#161616",
@@ -124,12 +107,17 @@ function MasonryGrid({
             <img
               src={img.imageUrl}
               alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
-              onLoad={e => handleLoad(img.id, e.currentTarget)}
               onError={e => {
                 const card = (e.target as HTMLImageElement).closest(".gallery-card") as HTMLElement;
                 if (card) card.style.display = "none";
               }}
-              style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+                objectFit: "cover",
+                objectPosition: "center top",  // show face/subject, not bottom
+              }}
             />
             <div className="gallery-overlay">
               <button
