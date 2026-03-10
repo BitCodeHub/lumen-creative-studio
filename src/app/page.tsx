@@ -31,11 +31,12 @@ function getCols(w: number) {
   return 2;
 }
 
-// AR_VARIANTS forces stagger regardless of actual image dimensions.
-// Since all our images are same-ratio portraits (832×1216), we must
-// assign varied heights artificially — like Dreamina does with mixed content.
-// Pattern mixes portrait-tall (>1.2), square-ish (~1.0), and mid-height (0.7-0.9)
-const AR_VARIANTS = [1.4, 0.72, 1.65, 1.05, 0.78, 1.5, 1.15, 0.85, 1.6, 0.68, 1.3, 1.55, 0.92, 1.35, 0.75, 1.45, 0.82, 1.2, 0.7, 1.58];
+// Dreamina renders images at FULL natural height — no crop, no objectFit cover.
+// Stagger comes from images having genuinely different aspect ratios.
+// Auto-gen v3 now outputs mixed sizes (portrait/landscape/square).
+// For existing uniform images, we use stable placeholder ratios until real sizes load.
+
+const PLACEHOLDER_ARS = [1.4, 0.7, 1.6, 1.0, 0.8, 1.5, 1.1, 0.75, 1.55, 0.9, 1.35, 1.65, 0.65, 1.2, 1.45];
 
 function MasonryGrid({
   images,
@@ -49,41 +50,50 @@ function MasonryGrid({
   onLike: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [positions, setPositions] = useState<{ x: number; y: number; w: number; h: number }[]>([]);
-  const [containerHeight, setContainerHeight] = useState(0);
-
-  const doLayout = useCallback(() => {
-    if (!containerRef.current) return;
-    const containerW = containerRef.current.offsetWidth;
-    if (!containerW) return;
-    const numCols = getCols(containerW);
-    const colW = Math.floor((containerW - GAP * (numCols - 1)) / numCols);
-    const colHeights = new Array(numCols).fill(0);
-    const newPos: { x: number; y: number; w: number; h: number }[] = [];
-
-    images.forEach((_, idx) => {
-      const ar = AR_VARIANTS[idx % AR_VARIANTS.length];
-      const h = Math.round(colW * ar);
-      const minCol = colHeights.indexOf(Math.min(...colHeights));
-      newPos.push({ x: minCol * (colW + GAP), y: colHeights[minCol], w: colW, h });
-      colHeights[minCol] += h + GAP;
-    });
-
-    setPositions(newPos);
-    setContainerHeight(Math.max(...colHeights, 0));
-  }, [images]);
+  const aspectMap = useRef<Record<string, number>>({});
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    doLayout();
-    const ro = new ResizeObserver(doLayout);
+    const update = () => {
+      if (containerRef.current) setContainerWidth(containerRef.current.offsetWidth);
+    };
+    update();
+    const ro = new ResizeObserver(update);
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, [doLayout]);
+  }, []);
+
+  const handleLoad = useCallback((id: string, el: HTMLImageElement) => {
+    if (el.naturalWidth && el.naturalHeight) {
+      const ar = el.naturalHeight / el.naturalWidth;
+      if (Math.abs((aspectMap.current[id] ?? 0) - ar) > 0.01) {
+        aspectMap.current[id] = ar;
+        forceUpdate(n => n + 1);
+      }
+    }
+  }, []);
+
+  // Compute layout inline (no state — runs on every render, instant)
+  const numCols = getCols(containerWidth || 1000);
+  const colW = containerWidth ? Math.floor((containerWidth - GAP * (numCols - 1)) / numCols) : 200;
+  const colHeights = new Array(numCols).fill(0);
+  const positions: { x: number; y: number; w: number; h: number }[] = [];
+
+  images.forEach((img, idx) => {
+    const ar = aspectMap.current[img.id] ?? PLACEHOLDER_ARS[idx % PLACEHOLDER_ARS.length];
+    const h = Math.round(colW * ar);
+    const minCol = colHeights.indexOf(Math.min(...colHeights));
+    positions.push({ x: minCol * (colW + GAP), y: colHeights[minCol], w: colW, h });
+    colHeights[minCol] += h + GAP;
+  });
+
+  const containerH = Math.max(...colHeights, 0);
 
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", width: "100%", height: containerHeight || undefined, minHeight: 400 }}
+      style={{ position: "relative", width: "100%", height: containerH || undefined, minHeight: 400 }}
     >
       {images.map((img, idx) => {
         const pos = positions[idx];
@@ -94,10 +104,10 @@ function MasonryGrid({
             onClick={() => onSelect(idx)}
             style={{
               position: "absolute",
-              left: pos ? pos.x : 0,
-              top: pos ? pos.y : idx * 220,
-              width: pos ? pos.w : "20%",
-              height: pos ? pos.h : 220,
+              left: pos.x,
+              top: pos.y,
+              width: pos.w,
+              height: pos.h,
               borderRadius: 8,
               overflow: "hidden",
               background: "#161616",
@@ -107,6 +117,7 @@ function MasonryGrid({
             <img
               src={img.imageUrl}
               alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
+              onLoad={e => handleLoad(img.id, e.currentTarget)}
               onError={e => {
                 const card = (e.target as HTMLImageElement).closest(".gallery-card") as HTMLElement;
                 if (card) card.style.display = "none";
@@ -115,8 +126,10 @@ function MasonryGrid({
                 width: "100%",
                 height: "100%",
                 display: "block",
-                objectFit: "cover",
-                objectPosition: "center top",  // show face/subject, not bottom
+                // Dreamina: objectFit contain — shows FULL image, black bars if aspect doesn't match
+                objectFit: "contain",
+                objectPosition: "center center",
+                background: "#161616",
               }}
             />
             <div className="gallery-overlay">
