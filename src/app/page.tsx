@@ -21,17 +21,29 @@ const MODELS = [
   { id: "sdxl", label: "SDXL" },
 ];
 
+// Base dimensions at "Good" quality (1x). 2K doubles these, 4K uses upscaler.
 const ASPECT_RATIOS = [
-  { label: "Auto", icon: "⊙", w: 1024, h: 1024 },
-  { label: "21:9", icon: "▬", w: 1344, h: 576 },
-  { label: "16:9", icon: "▬", w: 1344, h: 768 },
-  { label: "3:2",  icon: "▭", w: 1216, h: 832 },
-  { label: "4:3",  icon: "▭", w: 1152, h: 896 },
-  { label: "1:1",  icon: "□", w: 1024, h: 1024 },
-  { label: "3:4",  icon: "▯", w: 896,  h: 1152 },
-  { label: "2:3",  icon: "▯", w: 832,  h: 1216 },
-  { label: "9:16", icon: "▯", w: 768,  h: 1344 },
+  { label: "Auto", w: 1024, h: 1024 },
+  { label: "21:9", w: 1344, h: 576 },
+  { label: "16:9", w: 1344, h: 768 },
+  { label: "3:2",  w: 1216, h: 832 },
+  { label: "4:3",  w: 1152, h: 896 },
+  { label: "1:1",  w: 1024, h: 1024 },
+  { label: "3:4",  w: 896,  h: 1152 },
+  { label: "2:3",  w: 832,  h: 1216 },
+  { label: "9:16", w: 768,  h: 1344 },
 ];
+
+// Resolution tiers
+// Good = 1x base (native generation speed)
+// High 2K = 2x base dimensions (higher detail, slower)
+// Ultra 4K = 1x base generation + Real-ESRGAN 4x upscale on DGX
+const RES_TIERS = {
+  good:  { label: "Good",       mult: 1, upscale4k: false },
+  "2k":  { label: "High (2K)",  mult: 2, upscale4k: false },
+  "4k":  { label: "Ultra (4K)", mult: 1, upscale4k: true  },
+} as const;
+type ResTier = keyof typeof RES_TIERS;
 
 const GAP = 6;
 
@@ -174,7 +186,7 @@ export default function HomePage() {
   // Aspect ratio / resolution / size state
   const [arPanelOpen, setArPanelOpen] = useState(false);
   const [selectedAR, setSelectedAR] = useState(0); // index into ASPECT_RATIOS (0 = Auto)
-  const [resolution, setResolution] = useState<"2k" | "4k">("2k");
+  const [resolution, setResolution] = useState<ResTier>("good");
   const [imgW, setImgW] = useState(1024);
   const [imgH, setImgH] = useState(1024);
   const [arLocked, setArLocked] = useState(true);
@@ -261,19 +273,19 @@ export default function HomePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // When AR preset selected, sync W/H
+  // When AR preset selected, sync W/H based on current resolution mult
   const selectAR = (idx: number) => {
     const ar = ASPECT_RATIOS[idx];
-    const mult = resolution === "4k" ? 2 : 1;
+    const mult = RES_TIERS[resolution].mult;
     setSelectedAR(idx);
     setImgW(ar.w * mult);
     setImgH(ar.h * mult);
     setArLocked(true);
   };
 
-  // When resolution changes, scale W/H
-  const changeResolution = (res: "2k" | "4k") => {
-    const mult = res === "4k" ? 2 : 1;
+  // When resolution tier changes, recalculate W/H from base AR
+  const changeResolution = (res: ResTier) => {
+    const mult = RES_TIERS[res].mult;
     const ar = ASPECT_RATIOS[selectedAR];
     setResolution(res);
     setImgW(ar.w * mult);
@@ -318,7 +330,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: resolution === "4k" }),
+        body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: RES_TIERS[resolution].upscale4k }),
       });
       const { promptId, error: err } = await res.json();
       if (err || !promptId) { setError(err || "Failed to start"); setIsGenerating(false); return; }
@@ -482,7 +494,7 @@ export default function HomePage() {
                           height: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 9 : 13,
                           border: "1.5px solid currentColor", borderRadius: 2, flexShrink: 0,
                         }} />
-                        {ASPECT_RATIOS[selectedAR].label} | {resolution === "4k" ? "Ultra (4K)" : "High (2K)"}
+                        {ASPECT_RATIOS[selectedAR].label} | {RES_TIERS[resolution].label}
                         <ChevronDown size={10} color="currentColor" />
                       </button>
 
@@ -522,18 +534,22 @@ export default function HomePage() {
                             })}
                           </div>
 
-                          {/* Resolution toggle */}
+                          {/* Resolution toggle — 3 tiers */}
                           <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Resolution</p>
                           <div style={{ display: "flex", gap: 0, marginBottom: 16, border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden" }}>
-                            {(["2k", "4k"] as const).map(r => (
-                              <button key={r} onClick={() => changeResolution(r)}
+                            {(Object.entries(RES_TIERS) as [ResTier, typeof RES_TIERS[ResTier]][]).map(([key, tier]) => (
+                              <button key={key} onClick={() => changeResolution(key)}
                                 style={{
-                                  flex: 1, padding: "9px", border: "none", cursor: "pointer",
-                                  background: resolution === r ? "rgba(77,159,255,0.15)" : "#111",
-                                  color: resolution === r ? "#4d9fff" : "#666",
-                                  fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+                                  flex: 1, padding: "9px 4px", border: "none", cursor: "pointer",
+                                  background: resolution === key ? "rgba(77,159,255,0.18)" : "#111",
+                                  color: resolution === key ? "#4d9fff" : "#666",
+                                  fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                                  borderRight: key !== "4k" ? "1px solid #2a2a2a" : "none",
                                 }}>
-                                {r === "2k" ? "High (2K)" : <span>Ultra (4K) <span style={{ color: "#4dff91", fontSize: 11 }}>✦</span></span>}
+                                {key === "4k" ? <span>{tier.label} <span style={{ color: "#4dff91", fontSize: 10 }}>✦</span></span> : tier.label}
+                                <div style={{ fontSize: 9, color: resolution === key ? "#4d9fff99" : "#444", marginTop: 2, fontWeight: 400 }}>
+                                  {key === "good" ? "1024px" : key === "2k" ? "2048px" : "4x upscale"}
+                                </div>
                               </button>
                             ))}
                           </div>
