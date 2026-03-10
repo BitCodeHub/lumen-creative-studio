@@ -2,48 +2,12 @@
 import { useState, useRef, useCallback } from "react";
 
 const STYLES = [
-  {
-    id: "linkedin",
-    label: "LinkedIn Pro",
-    icon: "💼",
-    desc: "Clean, confident, professional",
-    color: "#0077b5",
-  },
-  {
-    id: "creative",
-    label: "Creative",
-    icon: "🎨",
-    desc: "Bold, expressive, memorable",
-    color: "#7c3aed",
-  },
-  {
-    id: "casual",
-    label: "Casual",
-    icon: "😊",
-    desc: "Approachable, warm, natural",
-    color: "#059669",
-  },
-  {
-    id: "executive",
-    label: "Executive",
-    icon: "🏢",
-    desc: "Commanding, sharp, authoritative",
-    color: "#1e40af",
-  },
-  {
-    id: "studio",
-    label: "Studio",
-    icon: "📸",
-    desc: "Polished, timeless, elegant",
-    color: "#6b7280",
-  },
-  {
-    id: "glamour",
-    label: "Glamour",
-    icon: "✨",
-    desc: "Radiant, editorial, striking",
-    color: "#be185d",
-  },
+  { id: "linkedin", label: "Professional", icon: "💼", desc: "Corporate & clean" },
+  { id: "creative", label: "Creative", icon: "🎨", desc: "Artistic flair" },
+  { id: "casual", label: "Casual", icon: "☀️", desc: "Natural & friendly" },
+  { id: "executive", label: "Executive", icon: "👔", desc: "Power & authority" },
+  { id: "studio", label: "Studio", icon: "📸", desc: "Classic portrait" },
+  { id: "glamour", label: "Glamour", icon: "✨", desc: "Red carpet ready" },
 ];
 
 type HeadshotResult = {
@@ -54,14 +18,6 @@ type HeadshotResult = {
   status: "pending" | "done" | "error";
 };
 
-const LOADING_MESSAGES = [
-  "Analyzing facial features...",
-  "Crafting the perfect look...",
-  "Applying professional lighting...",
-  "Fine-tuning details...",
-  "Almost ready...",
-];
-
 export default function HeadshotsPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -70,16 +26,11 @@ export default function HeadshotsPage() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loadingMsg, setLoadingMsg] = useState(0);
-  const [selectedResult, setSelectedResult] = useState<HeadshotResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pollRefs = useRef<Record<string, NodeJS.Timeout>>({});
-  const msgTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFile = (f: File) => {
     setPhoto(f);
-    setResults([]);
-    setError(null);
     const reader = new FileReader();
     reader.onload = (e) => setPhotoPreview(e.target?.result as string);
     reader.readAsDataURL(f);
@@ -112,21 +63,11 @@ export default function HeadshotsPage() {
     pollRefs.current[result.promptId] = interval;
   }, []);
 
-  const startLoadingMessages = () => {
-    let i = 0;
-    msgTimerRef.current = setInterval(() => {
-      i = (i + 1) % LOADING_MESSAGES.length;
-      setLoadingMsg(i);
-    }, 3500);
-  };
-
   const generate = async () => {
     if (!photo || selectedStyles.length === 0) return;
     setError(null);
     setLoading(true);
     setResults([]);
-    setLoadingMsg(0);
-    startLoadingMessages();
 
     const form = new FormData();
     form.append("photo", photo);
@@ -139,489 +80,263 @@ export default function HeadshotsPage() {
       if (!r.ok) {
         setError(d.error || "Generation failed");
         setLoading(false);
-        if (msgTimerRef.current) clearInterval(msgTimerRef.current);
         return;
       }
 
-      const initial: HeadshotResult[] = d.jobs.map((j: { style: string; label: string; promptId: string }) => ({
+      const initial: HeadshotResult[] = d.jobs.map((j: any) => ({
         style: j.style,
         label: j.label,
         promptId: j.promptId,
-        status: "pending" as const,
+        status: "pending",
       }));
       setResults(initial);
       setLoading(false);
-      if (msgTimerRef.current) clearInterval(msgTimerRef.current);
 
       initial.forEach((res, idx) => pollImage(res, idx));
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (e: any) {
+      setError(e.message);
       setLoading(false);
-      if (msgTimerRef.current) clearInterval(msgTimerRef.current);
     }
   };
 
   const doneCount = results.filter((r) => r.status === "done").length;
-  const totalCount = results.length;
-  const progress = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
-  const allDone = totalCount > 0 && doneCount === totalCount;
+  const progress = results.length > 0 ? (doneCount / results.length) * 100 : 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "Inter, sans-serif" }}>
-      {/* Consistent app header */}
-      <div style={{
-        borderBottom: "1px solid #1a1a1a",
-        padding: "16px 32px",
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        background: "#0a0a0a",
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-      }}>
-        <a href="/" style={{ color: "#666", textDecoration: "none", fontSize: 13, display: "flex", alignItems: "center", gap: 6, transition: "color 0.15s" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#666")}
-        >
-          ← Explore
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans">
+      {/* Header */}
+      <header className="border-b border-[#1a1a1a] px-6 py-4 flex items-center gap-4">
+        <a href="/" className="text-gray-500 hover:text-white transition text-sm flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
         </a>
-        <div style={{ width: 1, height: 16, background: "#2a2a2a" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: "50%",
-            background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16,
-          }}>🤳</div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>AI Headshots</div>
-            <div style={{ fontSize: 12, color: "#666", lineHeight: 1.2 }}>Professional portraits in seconds</div>
-          </div>
+        <div className="w-px h-5 bg-[#333]" />
+        <div>
+          <h1 className="text-xl font-bold">AI Headshots</h1>
+          <p className="text-gray-500 text-sm">Professional photos in seconds</p>
         </div>
-      </div>
+      </header>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
-        {/* All-done banner */}
-        {allDone && (
-          <div style={{
-            marginBottom: 24,
-            padding: "16px 24px",
-            background: "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.15))",
-            border: "1px solid rgba(124,58,237,0.3)",
-            borderRadius: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 24 }}>🎉</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>All {doneCount} headshots ready!</div>
-                <div style={{ fontSize: 13, color: "#a78bfa" }}>Click any image to view or download</div>
-              </div>
-            </div>
-            <button
-              onClick={() => { setResults([]); setPhotoPreview(null); setPhoto(null); }}
-              style={{
-                padding: "8px 18px", borderRadius: 10, border: "1px solid rgba(124,58,237,0.4)",
-                background: "transparent", color: "#a78bfa", cursor: "pointer", fontSize: 13, fontWeight: 600,
-              }}
-            >
-              ↺ New session
-            </button>
-          </div>
-        )}
+      <main className="max-w-6xl mx-auto p-6">
+        <div className="grid lg:grid-cols-[380px_1fr] gap-8">
 
-        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 32, alignItems: "start" }}>
-
-          {/* LEFT PANEL */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-            {/* Upload zone */}
+          {/* Left Panel */}
+          <div className="space-y-6">
+            {/* Upload Zone */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
               onClick={() => fileRef.current?.click()}
-              style={{
-                border: `2px dashed ${dragOver ? "#7c3aed" : photoPreview ? "rgba(124,58,237,0.4)" : "#2a2a2a"}`,
-                borderRadius: 20,
-                cursor: "pointer",
-                background: dragOver ? "rgba(124,58,237,0.06)" : photoPreview ? "#111" : "#0f0f0f",
-                transition: "all 0.2s",
-                overflow: "hidden",
-                position: "relative",
-              }}
+              className={`
+                relative rounded-2xl border-2 border-dashed transition-all cursor-pointer overflow-hidden
+                ${dragOver ? 'border-violet-500 bg-violet-500/5' : 'border-[#333] bg-[#111] hover:border-[#444]'}
+                ${photoPreview ? 'aspect-square' : 'aspect-[4/3]'}
+              `}
             >
               {photoPreview ? (
-                <div style={{ position: "relative" }}>
-                  <img
-                    src={photoPreview}
-                    alt="Your photo"
-                    style={{ width: "100%", display: "block", maxHeight: 320, objectFit: "cover", objectPosition: "center top" }}
-                  />
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    background: "linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.7))",
-                    display: "flex", alignItems: "flex-end", padding: 16,
-                  }}>
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Click to change photo</span>
+                <div className="relative w-full h-full group">
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <span className="text-sm font-medium">Click to change</span>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: "48px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
-                  <div style={{
-                    width: 64, height: 64, borderRadius: 16,
-                    background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(79,70,229,0.2))",
-                    border: "1px solid rgba(124,58,237,0.3)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 28,
-                  }}>📷</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Drop your photo here</div>
-                    <div style={{ color: "#555", fontSize: 13 }}>or click to browse · JPG, PNG, WEBP</div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
-                  <div style={{ borderTop: "1px solid #1a1a1a", width: "100%", paddingTop: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {["Clear face, front-facing", "Good lighting, sharp focus", "Neutral expression works best"].map((tip) => (
-                      <div key={tip} style={{ display: "flex", gap: 8, fontSize: 12, color: "#555", textAlign: "left" }}>
-                        <span style={{ color: "#7c3aed", flexShrink: 0 }}>·</span>
-                        {tip}
-                      </div>
-                    ))}
+                  <p className="font-semibold text-white">Drop your photo here</p>
+                  <p className="text-gray-500 text-sm mt-1">or click to browse</p>
+                  <div className="flex gap-2 mt-4">
+                    <span className="px-2 py-1 bg-[#1a1a1a] rounded text-xs text-gray-400">JPG</span>
+                    <span className="px-2 py-1 bg-[#1a1a1a] rounded text-xs text-gray-400">PNG</span>
+                    <span className="px-2 py-1 bg-[#1a1a1a] rounded text-xs text-gray-400">WEBP</span>
                   </div>
                 </div>
               )}
-              <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
 
-            {/* Style selector */}
+            {/* Style Selector */}
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#ccc" }}>Choose your styles</span>
-                <span style={{ fontSize: 12, color: "#555" }}>{selectedStyles.length} / 6 selected</span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-300">Choose your styles</span>
+                <span className="text-xs text-gray-500">{selectedStyles.length} selected</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div className="grid grid-cols-2 gap-2">
                 {STYLES.map((s) => {
                   const active = selectedStyles.includes(s.id);
                   return (
                     <button
                       key={s.id}
                       onClick={() => toggleStyle(s.id)}
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 14,
-                        border: `1px solid ${active ? "rgba(124,58,237,0.5)" : "#1e1e1e"}`,
-                        background: active ? "rgba(124,58,237,0.12)" : "#0f0f0f",
-                        color: active ? "#e9d5ff" : "#777",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        transition: "all 0.15s",
-                        position: "relative",
-                        overflow: "hidden",
-                      }}
+                      className={`
+                        p-3 rounded-xl text-left transition-all
+                        ${active 
+                          ? 'bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 border border-violet-500/50 ring-1 ring-violet-500/20' 
+                          : 'bg-[#111] border border-[#222] hover:border-[#333]'}
+                      `}
                     >
-                      <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{s.label}</div>
-                      <div style={{ fontSize: 11, opacity: 0.6 }}>{s.desc}</div>
-                      {active && (
-                        <div style={{
-                          position: "absolute", top: 8, right: 8,
-                          width: 16, height: 16, borderRadius: "50%",
-                          background: "#7c3aed",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 9, color: "#fff",
-                        }}>✓</div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{s.icon}</span>
+                        <div>
+                          <p className={`text-sm font-medium ${active ? 'text-white' : 'text-gray-400'}`}>{s.label}</p>
+                          <p className="text-xs text-gray-500">{s.desc}</p>
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Generate button */}
+            {/* Generate Button */}
             <button
               onClick={generate}
-              disabled={!photo || selectedStyles.length === 0 || loading || results.filter(r => r.status === 'pending').length > 0}
-              style={{
-                width: "100%",
-                padding: "16px 0",
-                borderRadius: 16,
-                border: "none",
-                background: (!photo || loading) ? "#1a1a1a"
-                  : "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-                color: (!photo || loading) ? "#444" : "#fff",
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: (!photo || loading || results.filter(r => r.status === 'pending').length > 0) ? "not-allowed" : "pointer",
-                transition: "all 0.2s",
-                letterSpacing: 0.3,
-                boxShadow: (!photo || loading) ? "none" : "0 4px 24px rgba(124,58,237,0.3)",
-              }}
+              disabled={!photo || selectedStyles.length === 0 || loading}
+              className={`
+                w-full py-4 rounded-xl font-semibold text-sm transition-all
+                ${(!photo || loading) 
+                  ? 'bg-[#222] text-gray-500 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25'}
+              `}
             >
-              {loading
-                ? "⏳ Starting generation..."
-                : results.filter(r => r.status === 'pending').length > 0
-                ? `⏳ Generating ${results.filter(r => r.status === 'pending').length} headshots...`
-                : `✨ Generate ${selectedStyles.length} headshot${selectedStyles.length !== 1 ? "s" : ""}`}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                `Generate ${selectedStyles.length} Headshot${selectedStyles.length > 1 ? 's' : ''}`
+              )}
             </button>
 
-            {/* Loading message */}
-            {(loading || results.filter(r => r.status === 'pending').length > 0) && (
-              <div style={{
-                padding: "12px 16px",
-                background: "#111",
-                borderRadius: 12,
-                border: "1px solid #1e1e1e",
-                fontSize: 13,
-                color: "#888",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}>
-                <div style={{
-                  width: 14, height: 14, border: "2px solid #7c3aed",
-                  borderTopColor: "transparent", borderRadius: "50%",
-                  flexShrink: 0, animation: "spin 0.8s linear infinite",
-                }} />
-                {LOADING_MESSAGES[loadingMsg]}
-              </div>
-            )}
-
-            {/* Progress bar */}
-            {totalCount > 0 && !allDone && (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#555", marginBottom: 6 }}>
-                  <span>{doneCount} of {totalCount} complete</span>
-                  <span>{Math.round(progress)}%</span>
-                </div>
-                <div style={{ height: 4, background: "#1a1a1a", borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%",
-                    width: `${progress}%`,
-                    background: "linear-gradient(90deg, #7c3aed, #4f46e5)",
-                    borderRadius: 4,
-                    transition: "width 0.5s ease",
-                  }} />
-                </div>
-              </div>
-            )}
-
             {error && (
-              <div style={{
-                padding: "12px 16px",
-                background: "#120000",
-                border: "1px solid #3b0000",
-                borderRadius: 12,
-                color: "#f87171",
-                fontSize: 13,
-                display: "flex", gap: 8, alignItems: "flex-start",
-              }}>
-                <span style={{ flexShrink: 0 }}>⚠️</span>
-                <span>{error}</span>
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {error}
               </div>
             )}
+
+            {/* Tips */}
+            <div className="p-4 rounded-xl bg-[#111] border border-[#1a1a1a]">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Pro tips</p>
+              <ul className="space-y-2">
+                {[
+                  "Use a clear, well-lit photo",
+                  "Face the camera directly",
+                  "Avoid busy backgrounds",
+                  "Higher resolution = better results"
+                ].map((tip) => (
+                  <li key={tip} className="flex items-start gap-2 text-sm text-gray-400">
+                    <span className="text-violet-400 mt-0.5">•</span>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
-          {/* RIGHT PANEL — Results */}
+          {/* Right Panel - Results */}
           <div>
             {results.length === 0 && !loading ? (
-              /* Empty state */
-              <div style={{
-                minHeight: 480,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                padding: 40,
-              }}>
-                <div style={{
-                  width: 120, height: 120, borderRadius: 24,
-                  background: "linear-gradient(135deg, rgba(124,58,237,0.1), rgba(79,70,229,0.1))",
-                  border: "1px solid rgba(124,58,237,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 48, marginBottom: 24,
-                }}>👤</div>
-                <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-                  Your headshots appear here
+              <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-center">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 flex items-center justify-center mb-6">
+                  <svg className="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                 </div>
-                <div style={{ color: "#555", fontSize: 14, maxWidth: 340, lineHeight: 1.6 }}>
-                  Upload a photo, pick your styles, and get a set of professional headshots in seconds.
-                </div>
-                <div style={{ display: "flex", gap: 10, marginTop: 28, flexWrap: "wrap", justifyContent: "center" }}>
-                  {["Corporate & polished", "Creative & expressive", "Casual & approachable"].map((t) => (
-                    <div key={t} style={{
-                      padding: "8px 16px",
-                      background: "#111",
-                      border: "1px solid #1e1e1e",
-                      borderRadius: 20,
-                      fontSize: 13,
-                      color: "#666",
-                    }}>{t}</div>
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">Your headshots will appear here</h3>
+                <p className="text-gray-500 text-sm max-w-sm">
+                  Upload a photo and select your preferred styles to generate professional headshots instantly
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 mt-8">
+                  {["✨ Studio quality", "⚡ Ready in seconds", "🎨 Multiple styles"].map((t) => (
+                    <span key={t} className="px-3 py-1.5 bg-[#111] border border-[#222] rounded-full text-xs text-gray-500">{t}</span>
                   ))}
                 </div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-                {results.map((res, i) => {
-                  const styleInfo = STYLES.find((s) => s.id === res.style);
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => res.status === "done" && res.imageUrl && setSelectedResult(res)}
-                      style={{
-                        borderRadius: 16,
-                        overflow: "hidden",
-                        background: "#111",
-                        border: "1px solid #1e1e1e",
-                        cursor: res.status === "done" ? "pointer" : "default",
-                        transition: "transform 0.15s, box-shadow 0.15s",
-                      }}
-                      onMouseEnter={e => {
-                        if (res.status === "done") {
-                          (e.currentTarget as HTMLDivElement).style.transform = "scale(1.02)";
-                          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px rgba(0,0,0,0.5)";
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-                      }}
-                    >
+              <div>
+                {/* Progress Bar */}
+                {results.length > 0 && doneCount < results.length && (
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-400">Generating headshots...</span>
+                      <span className="text-sm font-medium text-violet-400">{doneCount}/{results.length}</span>
+                    </div>
+                    <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Results Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {results.map((res, i) => (
+                    <div key={i} className="group rounded-xl overflow-hidden bg-[#111] border border-[#1a1a1a] hover:border-[#333] transition">
                       {res.status === "done" && res.imageUrl ? (
-                        <img
-                          src={res.imageUrl}
-                          alt={res.label}
-                          style={{ width: "100%", display: "block", aspectRatio: "2/3", objectFit: "cover" }}
-                        />
+                        <a href={res.imageUrl} download={`headshot_${res.style}.jpg`} target="_blank" rel="noopener" className="block">
+                          <div className="relative aspect-[3/4]">
+                            <img src={res.imageUrl} alt={res.label} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                              <span className="px-3 py-1.5 bg-white text-black rounded-lg text-sm font-medium">
+                                Download
+                              </span>
+                            </div>
+                          </div>
+                        </a>
                       ) : (
-                        <div style={{
-                          aspectRatio: "2/3",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 14,
-                          background: "linear-gradient(135deg, #111, #0f0f1a)",
-                        }}>
-                          <div style={{
-                            width: 40, height: 40,
-                            border: "3px solid rgba(124,58,237,0.4)",
-                            borderTopColor: "#7c3aed",
-                            borderRadius: "50%",
-                            animation: "spin 1s linear infinite",
-                          }} />
-                          <span style={{ fontSize: 12, color: "#444" }}>Creating your look</span>
+                        <div className="aspect-[3/4] flex flex-col items-center justify-center bg-gradient-to-br from-[#111] to-[#1a1a2e]">
+                          <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mb-3" />
+                          <span className="text-xs text-gray-500">Creating magic...</span>
                         </div>
                       )}
-                      <div style={{
-                        padding: "10px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14 }}>{styleInfo?.icon}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#ccc" }}>{res.label}</span>
-                        </div>
+                      <div className="px-3 py-2.5 flex items-center gap-2 border-t border-[#1a1a1a]">
+                        <span>{STYLES.find((s) => s.id === res.style)?.icon}</span>
+                        <span className="text-sm text-gray-400">{res.label}</span>
                         {res.status === "done" && (
-                          <a
-                            href={res.imageUrl}
-                            download={`headshot_${res.style}.jpg`}
-                            target="_blank"
-                            rel="noopener"
-                            onClick={e => e.stopPropagation()}
-                            style={{
-                              fontSize: 12, color: "#7c3aed", textDecoration: "none",
-                              padding: "4px 10px", border: "1px solid rgba(124,58,237,0.3)",
-                              borderRadius: 8, transition: "all 0.15s",
-                            }}
-                          >↓</a>
+                          <svg className="w-4 h-4 text-green-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
                         )}
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* Download All */}
+                {doneCount === results.length && doneCount > 0 && (
+                  <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-white">All headshots ready! 🎉</p>
+                        <p className="text-sm text-gray-400">Click any image to download</p>
+                      </div>
+                      <button 
+                        onClick={() => results.forEach(r => r.imageUrl && window.open(r.imageUrl, '_blank'))}
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm font-medium transition"
+                      >
+                        Open All
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
-      </div>
-
-      {/* Lightbox */}
-      {selectedResult && selectedResult.imageUrl && (
-        <div
-          onClick={() => setSelectedResult(null)}
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.92)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 100, padding: 24,
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: "#111",
-              borderRadius: 24,
-              overflow: "hidden",
-              maxWidth: 480,
-              width: "100%",
-              border: "1px solid #222",
-            }}
-          >
-            <img
-              src={selectedResult.imageUrl}
-              alt={selectedResult.label}
-              style={{ width: "100%", display: "block", maxHeight: "65vh", objectFit: "cover" }}
-            />
-            <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>
-                  {STYLES.find(s => s.id === selectedResult.style)?.icon} {selectedResult.label}
-                </div>
-                <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
-                  {STYLES.find(s => s.id === selectedResult.style)?.desc}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  onClick={() => setSelectedResult(null)}
-                  style={{
-                    padding: "8px 16px", borderRadius: 10,
-                    border: "1px solid #2a2a2a",
-                    background: "transparent", color: "#888",
-                    cursor: "pointer", fontSize: 13,
-                  }}
-                >Close</button>
-                <a
-                  href={selectedResult.imageUrl}
-                  download={`headshot_${selectedResult.style}.jpg`}
-                  target="_blank"
-                  rel="noopener"
-                  style={{
-                    padding: "8px 18px", borderRadius: 10,
-                    background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                    color: "#fff", textDecoration: "none",
-                    fontSize: 13, fontWeight: 700,
-                    display: "flex", alignItems: "center", gap: 6,
-                  }}
-                >↓ Download</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
-          .headshots-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+      </main>
     </div>
   );
 }
