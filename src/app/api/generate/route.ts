@@ -443,6 +443,17 @@ async function waitForImage(promptId: string, maxWaitMs = 600000): Promise<strin
   throw new Error("High demand - please try again in a moment");
 }
 
+// Patch EmptyLatentImage dimensions in any workflow
+function patchDimensions(workflow: Record<string, any>, w: number, h: number) {
+  for (const node of Object.values(workflow)) {
+    if ((node as any).class_type === "EmptyLatentImage") {
+      (node as any).inputs.width = w;
+      (node as any).inputs.height = h;
+    }
+  }
+  return workflow;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -450,32 +461,40 @@ export async function POST(request: NextRequest) {
       prompt, 
       model = "flux-dev",
       upscale = true,
-      seed
+      upscale4k = false,
+      seed,
+      width = 1024,
+      height = 1024,
     } = body;
     
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
+
+    // 4K = upscale after generation; 2K = generate at native size
+    const doUpscale = upscale4k || upscale;
     
-    console.log(`[Generate] Model: ${model}, Prompt: ${prompt.slice(0, 50)}..., Upscale: ${upscale}`);
+    console.log(`[Generate] Model: ${model}, Size: ${width}x${height}, 4K: ${upscale4k}, Prompt: ${prompt.slice(0, 50)}...`);
     
     // Select workflow based on model
-    let workflow;
+    let workflow: Record<string, any>;
     switch (model) {
       case "realvis":
-        workflow = createRealVisWorkflow(prompt, seed, upscale);
+        workflow = createRealVisWorkflow(prompt, seed, doUpscale);
         break;
       case "flux-schnell":
-        workflow = createFluxSchnellWorkflow(prompt, seed, upscale);
+        workflow = createFluxSchnellWorkflow(prompt, seed, doUpscale);
         break;
       case "sdxl":
-        workflow = createSDXLWorkflow(prompt, seed, upscale);
+        workflow = createSDXLWorkflow(prompt, seed, doUpscale);
         break;
       case "flux-dev":
       default:
-        workflow = createFluxDevWorkflow(prompt, seed, upscale);
+        workflow = createFluxDevWorkflow(prompt, seed, doUpscale);
         break;
     }
+    // Apply user-selected dimensions
+    patchDimensions(workflow, width, height);
     
     // Clear auto-generated queue if backed up (>5 pending jobs)
     // This ensures user requests aren't stuck behind auto-variation engine jobs

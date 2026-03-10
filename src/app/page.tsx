@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Compass, Diamond, Archive, ChevronDown,
   Loader2, Download, Heart, Copy, Check, Sparkles,
-  Image as ImageIcon, Plus, Wand2, ChevronLeft, ChevronRight, X
+  Image as ImageIcon, Plus, Wand2, ChevronLeft, ChevronRight, X, Lock, Unlock
 } from "lucide-react";
 
 interface GalleryImage {
@@ -19,6 +19,18 @@ const MODELS = [
   { id: "flux-dev", label: "FLUX.1 Dev" },
   { id: "flux-schnell", label: "FLUX Schnell" },
   { id: "sdxl", label: "SDXL" },
+];
+
+const ASPECT_RATIOS = [
+  { label: "Auto", icon: "⊙", w: 1024, h: 1024 },
+  { label: "21:9", icon: "▬", w: 1344, h: 576 },
+  { label: "16:9", icon: "▬", w: 1344, h: 768 },
+  { label: "3:2",  icon: "▭", w: 1216, h: 832 },
+  { label: "4:3",  icon: "▭", w: 1152, h: 896 },
+  { label: "1:1",  icon: "□", w: 1024, h: 1024 },
+  { label: "3:4",  icon: "▯", w: 896,  h: 1152 },
+  { label: "2:3",  icon: "▯", w: 832,  h: 1216 },
+  { label: "9:16", icon: "▯", w: 768,  h: 1344 },
 ];
 
 const GAP = 6;
@@ -159,6 +171,15 @@ export default function HomePage() {
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<"trends" | "shorts">("trends");
 
+  // Aspect ratio / resolution / size state
+  const [arPanelOpen, setArPanelOpen] = useState(false);
+  const [selectedAR, setSelectedAR] = useState(0); // index into ASPECT_RATIOS (0 = Auto)
+  const [resolution, setResolution] = useState<"2k" | "4k">("2k");
+  const [imgW, setImgW] = useState(1024);
+  const [imgH, setImgH] = useState(1024);
+  const [arLocked, setArLocked] = useState(true);
+  const arPanelRef = useRef<HTMLDivElement>(null);
+
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -226,16 +247,52 @@ export default function HomePage() {
     return () => observerRef.current?.disconnect();
   }, [hasMore, fetchGallery]);
 
-  // Close floating bar on outside click
+  // Close floating bar + AR panel on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (floatingRef.current && !floatingRef.current.contains(e.target as Node)) {
         setFloatingExpanded(false);
       }
+      if (arPanelRef.current && !arPanelRef.current.contains(e.target as Node)) {
+        setArPanelOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // When AR preset selected, sync W/H
+  const selectAR = (idx: number) => {
+    const ar = ASPECT_RATIOS[idx];
+    const mult = resolution === "4k" ? 2 : 1;
+    setSelectedAR(idx);
+    setImgW(ar.w * mult);
+    setImgH(ar.h * mult);
+    setArLocked(true);
+  };
+
+  // When resolution changes, scale W/H
+  const changeResolution = (res: "2k" | "4k") => {
+    const mult = res === "4k" ? 2 : 1;
+    const ar = ASPECT_RATIOS[selectedAR];
+    setResolution(res);
+    setImgW(ar.w * mult);
+    setImgH(ar.h * mult);
+  };
+
+  // When W changes with lock on, scale H proportionally
+  const changeW = (val: number) => {
+    setImgW(val);
+    if (arLocked && imgW > 0) {
+      setImgH(Math.round(val * (imgH / imgW)));
+    }
+  };
+  const changeH = (val: number) => {
+    setImgH(val);
+    if (arLocked && imgH > 0) {
+      setImgW(Math.round(val * (imgW / imgH)));
+    }
+  };
 
   // Keyboard nav for detail view
   useEffect(() => {
@@ -256,11 +313,12 @@ export default function HomePage() {
     setGeneratedImage(null);
     setProgress("Submitting...");
     setFloatingExpanded(false);
+    setArPanelOpen(false);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model }),
+        body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: resolution === "4k" }),
       });
       const { promptId, error: err } = await res.json();
       if (err || !promptId) { setError(err || "Failed to start"); setIsGenerating(false); return; }
@@ -388,7 +446,7 @@ export default function HomePage() {
                   padding: "6px 16px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
                   flexWrap: "wrap", gap: 8,
                 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", position: "relative" }}>
                     {/* Model selector */}
                     <div style={{ position: "relative" }}>
                       <select
@@ -406,19 +464,113 @@ export default function HomePage() {
                       </select>
                       <ChevronDown size={11} color="#555" style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                     </div>
-                    {/* Ratio */}
-                    <button style={{
-                      display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
-                      borderRadius: 20, border: "1px solid #2a2a2a", background: "#1e1e22",
-                      fontSize: 12, color: "#bbb", cursor: "pointer",
-                    }}>
-                      <div style={{ width: 10, height: 10, border: "1.5px solid #555", borderRadius: 2 }} />
-                      Auto ratio
-                    </button>
-                    <button style={{
-                      padding: "5px 10px", borderRadius: 20, border: "1px solid #2a2a2a",
-                      background: "#1e1e22", fontSize: 12, color: "#bbb", cursor: "pointer",
-                    }}>High (2K)</button>
+
+                    {/* Aspect ratio button */}
+                    <div ref={arPanelRef} style={{ position: "relative" }}>
+                      <button
+                        onClick={() => setArPanelOpen(v => !v)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+                          borderRadius: 20,
+                          border: arPanelOpen ? "1px solid #4d9fff" : "1px solid #2a2a2a",
+                          background: arPanelOpen ? "rgba(77,159,255,0.08)" : "#1e1e22",
+                          fontSize: 12, color: arPanelOpen ? "#4d9fff" : "#bbb", cursor: "pointer",
+                        }}>
+                        <div style={{
+                          width: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 13 : 9,
+                          height: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 9 : 13,
+                          border: "1.5px solid currentColor", borderRadius: 2, flexShrink: 0,
+                        }} />
+                        {ASPECT_RATIOS[selectedAR].label} | {resolution === "4k" ? "Ultra (4K)" : "High (2K)"}
+                        <ChevronDown size={10} color="currentColor" />
+                      </button>
+
+                      {/* Aspect ratio panel */}
+                      {arPanelOpen && (
+                        <div style={{
+                          position: "absolute", bottom: "calc(100% + 8px)", left: 0,
+                          background: "#1a1a1e", border: "1px solid #2a2a2a", borderRadius: 14,
+                          padding: "16px", zIndex: 300, minWidth: 340,
+                          boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
+                        }}>
+                          {/* Aspect ratio presets */}
+                          <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>Aspect ratio</p>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                            {ASPECT_RATIOS.map((ar, i) => {
+                              const isWide = ar.w > ar.h;
+                              const isSquare = ar.w === ar.h;
+                              const boxW = isWide ? 22 : isSquare ? 16 : 11;
+                              const boxH = isWide ? 14 : isSquare ? 16 : 22;
+                              return (
+                                <button key={ar.label} onClick={() => selectAR(i)}
+                                  style={{
+                                    display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+                                    padding: "8px 10px", borderRadius: 8, cursor: "pointer",
+                                    border: selectedAR === i ? "1.5px solid #4d9fff" : "1.5px solid #2a2a2a",
+                                    background: selectedAR === i ? "rgba(77,159,255,0.1)" : "#111",
+                                    minWidth: 44,
+                                  }}>
+                                  <div style={{
+                                    width: boxW, height: boxH,
+                                    border: `1.5px solid ${selectedAR === i ? "#4d9fff" : "#555"}`,
+                                    borderRadius: 2,
+                                  }} />
+                                  <span style={{ fontSize: 10, color: selectedAR === i ? "#4d9fff" : "#888", fontWeight: 500 }}>{ar.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Resolution toggle */}
+                          <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Resolution</p>
+                          <div style={{ display: "flex", gap: 0, marginBottom: 16, border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden" }}>
+                            {(["2k", "4k"] as const).map(r => (
+                              <button key={r} onClick={() => changeResolution(r)}
+                                style={{
+                                  flex: 1, padding: "9px", border: "none", cursor: "pointer",
+                                  background: resolution === r ? "rgba(77,159,255,0.15)" : "#111",
+                                  color: resolution === r ? "#4d9fff" : "#666",
+                                  fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+                                }}>
+                                {r === "2k" ? "High (2K)" : <span>Ultra (4K) <span style={{ color: "#4dff91", fontSize: 11 }}>✦</span></span>}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Custom W/H size */}
+                          <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Size</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1,
+                              background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "6px 10px" }}>
+                              <span style={{ fontSize: 11, color: "#666", fontWeight: 600, minWidth: 14 }}>W</span>
+                              <input type="number" value={imgW} min={256} max={2048} step={64}
+                                onChange={e => changeW(Number(e.target.value))}
+                                style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                                  color: "#ddd", fontSize: 13, fontFamily: "inherit", textAlign: "center" }} />
+                            </div>
+                            {/* Lock button */}
+                            <button onClick={() => setArLocked(v => !v)}
+                              style={{
+                                width: 30, height: 30, borderRadius: "50%", border: "1px solid #2a2a2a",
+                                background: arLocked ? "rgba(77,159,255,0.1)" : "#111",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer", color: arLocked ? "#4d9fff" : "#555", flexShrink: 0,
+                              }}>
+                              {arLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                            </button>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1,
+                              background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "6px 10px" }}>
+                              <span style={{ fontSize: 11, color: "#666", fontWeight: 600, minWidth: 14 }}>H</span>
+                              <input type="number" value={imgH} min={256} max={2048} step={64}
+                                onChange={e => changeH(Number(e.target.value))}
+                                style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                                  color: "#ddd", fontSize: 13, fontFamily: "inherit", textAlign: "center" }} />
+                              <span style={{ fontSize: 10, color: "#444" }}>PX</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
