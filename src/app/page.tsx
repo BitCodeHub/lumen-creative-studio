@@ -404,7 +404,8 @@ export default function HomePage() {
         {activeNav === "explore" && (
           <>
             {/* ===== DREAMINA-STYLE TOP PROMPT BOX ===== */}
-            <div style={{ padding: "28px 24px 20px", maxWidth: 1000, margin: "0 auto" }}>
+            {/* paddingBottom expands when AR panel is open to prevent grid from covering it */}
+            <div style={{ padding: "28px 24px 20px", maxWidth: 1000, margin: "0 auto", paddingBottom: arPanelOpen ? 340 : 20 }}>
               {/* Title */}
               <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: "0 0 18px", letterSpacing: -0.3, textAlign: "center" }}>
                 Start Creating With <span style={{ color: "#4d9fff" }}>AI Image</span>
