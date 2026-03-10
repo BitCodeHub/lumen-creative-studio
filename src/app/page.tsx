@@ -372,11 +372,23 @@ export default function HomePage() {
     setArPanelOpen(false);
     setFloatArPanelOpen(false);
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: RES_TIERS[resolution].upscale4k }),
-      });
+      let res: Response;
+      if (refImage) {
+        const fd = new FormData();
+        fd.append("refImage", refImage);
+        fd.append("prompt", prompt);
+        fd.append("model", model);
+        fd.append("width", String(imgW));
+        fd.append("height", String(imgH));
+        fd.append("mode", refImageMode);
+        res = await fetch("/api/generate/ref", { method: "POST", body: fd });
+      } else {
+        res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: RES_TIERS[resolution].upscale4k }),
+        });
+      }
       const { promptId, error: err } = await res.json();
       if (err || !promptId) { setError(err || "Failed to start"); setIsGenerating(false); return; }
       setProgress("Generating...");
@@ -486,13 +498,33 @@ export default function HomePage() {
               }}>
                 {/* Text area row */}
                 <div style={{ display: "flex", gap: 12, padding: "14px 16px 10px", alignItems: "flex-start" }}>
-                  <button style={{
-                    width: 40, height: 40, borderRadius: 10, border: "1.5px dashed #333",
-                    background: "#1e1e22", display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", flexShrink: 0, color: "#555", marginTop: 2,
-                  }}>
-                    <Plus size={16} />
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => refInputRef.current?.click()}
+                      title="Upload reference image"
+                      style={{
+                        width: 40, height: 40, borderRadius: 10,
+                        border: refImagePreview ? "1.5px solid rgba(124,58,237,0.6)" : "1.5px dashed #333",
+                        background: refImagePreview ? "rgba(124,58,237,0.12)" : "#1e1e22",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", color: refImagePreview ? "#a78bfa" : "#555", marginTop: 2,
+                        overflow: "hidden", padding: 0, position: "relative",
+                      }}>
+                      {refImagePreview ? (
+                        <img src={refImagePreview} alt="ref" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} />
+                      ) : (
+                        <Plus size={16} />
+                      )}
+                    </button>
+                    {refImagePreview && (
+                      <button onClick={clearRefImage} title="Remove reference"
+                        style={{ width: 40, height: 16, borderRadius: 6, border: "none", background: "rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer", fontSize: 9, fontWeight: 700 }}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <input ref={refInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => { if (e.target.files?.[0]) handleRefImage(e.target.files[0]); e.target.value = ""; }} />
                   <textarea
                     value={prompt}
                     onChange={e => setPrompt(e.target.value)}
@@ -1043,13 +1075,33 @@ export default function HomePage() {
             boxShadow: "0 16px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(77,159,255,0.1)",
           }}>
             <div style={{ display: "flex", gap: 12, padding: "14px 14px 10px", alignItems: "flex-start" }}>
-              <button style={{
-                width: 40, height: 40, borderRadius: 10, border: "1.5px dashed #333",
-                background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", flexShrink: 0, color: "#555", marginTop: 2
-              }}>
-                <Plus size={16} />
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                <button
+                  onClick={() => refInputFloatRef.current?.click()}
+                  title="Upload reference image"
+                  style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    border: refImagePreview ? "1.5px solid rgba(124,58,237,0.6)" : "1.5px dashed #333",
+                    background: refImagePreview ? "rgba(124,58,237,0.12)" : "#1a1a1a",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", color: refImagePreview ? "#a78bfa" : "#555", marginTop: 2,
+                    overflow: "hidden", padding: 0, position: "relative",
+                  }}>
+                  {refImagePreview ? (
+                    <img src={refImagePreview} alt="ref" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} />
+                  ) : (
+                    <Plus size={16} />
+                  )}
+                </button>
+                {refImagePreview && (
+                  <button onClick={clearRefImage} title="Remove reference"
+                    style={{ width: 40, height: 16, borderRadius: 6, border: "none", background: "rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer", fontSize: 9, fontWeight: 700 }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+              <input ref={refInputFloatRef} type="file" accept="image/*" style={{ display: "none" }}
+                onChange={e => { if (e.target.files?.[0]) handleRefImage(e.target.files[0]); e.target.value = ""; }} />
               <textarea autoFocus value={prompt} onChange={e => setPrompt(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
                 placeholder="Describe the image you're imagining..."
