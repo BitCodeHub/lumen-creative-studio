@@ -31,7 +31,15 @@ function getCols(w: number) {
   return 2;
 }
 
-// True JS masonry — re-layouts every time ANY image loads
+// Stable pseudo-random height multiplier per image index
+// Creates a natural mix of short/medium/tall cards like Dreamina
+function getHeightVariant(idx: number): number {
+  // Pattern cycles through different heights for visual variety
+  const variants = [1.25, 0.85, 1.5, 1.0, 0.75, 1.35, 1.1, 0.9, 1.6, 0.8, 1.2, 1.4, 0.95, 1.3, 0.7];
+  return variants[idx % variants.length];
+}
+
+// True JS masonry — shortest-column placement with height variety
 function MasonryGrid({
   images,
   onSelect,
@@ -44,12 +52,8 @@ function MasonryGrid({
   onLike: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
-  // Store aspect ratios per image id
-  const aspectMap = useRef<Record<string, number>>({});
-  const [, forceUpdate] = useState(0);
-  const positionsRef = useRef<{ x: number; y: number; w: number; h: number }[]>([]);
-  const containerHeightRef = useRef(0);
+  const [positions, setPositions] = useState<{ x: number; y: number; w: number; h: number }[]>([]);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const doLayout = useCallback(() => {
     if (!containerRef.current) return;
@@ -57,13 +61,12 @@ function MasonryGrid({
     if (!containerW) return;
     const numCols = getCols(containerW);
     const colW = Math.floor((containerW - GAP * (numCols - 1)) / numCols);
+    const BASE_H = Math.round(colW * 1.2); // base height ~1.2:1 ratio
     const colHeights = new Array(numCols).fill(0);
-    const newPos: typeof positionsRef.current = [];
+    const newPos: { x: number; y: number; w: number; h: number }[] = [];
 
-    images.forEach((img) => {
-      // Use cached aspect ratio if available, else default portrait 3:4
-      const ar = aspectMap.current[img.id] ?? (3 / 4);
-      const h = Math.round(colW * ar);
+    images.forEach((_, idx) => {
+      const h = Math.round(BASE_H * getHeightVariant(idx));
       const minCol = colHeights.indexOf(Math.min(...colHeights));
       newPos.push({
         x: minCol * (colW + GAP),
@@ -74,12 +77,10 @@ function MasonryGrid({
       colHeights[minCol] += h + GAP;
     });
 
-    positionsRef.current = newPos;
-    containerHeightRef.current = Math.max(...colHeights, 0);
-    forceUpdate(n => n + 1);
+    setPositions(newPos);
+    setContainerHeight(Math.max(...colHeights, 0));
   }, [images]);
 
-  // Layout on mount + resize
   useEffect(() => {
     doLayout();
     const ro = new ResizeObserver(doLayout);
@@ -87,26 +88,10 @@ function MasonryGrid({
     return () => ro.disconnect();
   }, [doLayout]);
 
-  // Re-layout when image list changes
-  useEffect(() => { doLayout(); }, [images, doLayout]);
-
-  const handleLoad = useCallback((img: GalleryImage, el: HTMLImageElement) => {
-    if (el.naturalWidth && el.naturalHeight) {
-      const ar = el.naturalHeight / el.naturalWidth;
-      if (aspectMap.current[img.id] !== ar) {
-        aspectMap.current[img.id] = ar;
-        doLayout();
-      }
-    }
-  }, [doLayout]);
-
-  const positions = positionsRef.current;
-  const containerH = containerHeightRef.current;
-
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", width: "100%", height: containerH > 0 ? containerH : undefined, minHeight: 400 }}
+      style={{ position: "relative", width: "100%", height: containerHeight || undefined, minHeight: 400 }}
     >
       {images.map((img, idx) => {
         const pos = positions[idx];
@@ -118,8 +103,9 @@ function MasonryGrid({
             style={{
               position: "absolute",
               left: pos ? pos.x : 0,
-              top: pos ? pos.y : idx * 200,
+              top: pos ? pos.y : idx * 220,
               width: pos ? pos.w : "20%",
+              height: pos ? pos.h : 220,
               borderRadius: 8,
               overflow: "hidden",
               background: "#161616",
@@ -127,16 +113,13 @@ function MasonryGrid({
             }}
           >
             <img
-              ref={el => { imgRefs.current[idx] = el; }}
               src={img.imageUrl}
               alt={img.prompt ? img.prompt.slice(0, 60) : "AI image"}
-              onLoad={e => handleLoad(img, e.currentTarget)}
               onError={e => {
                 const card = (e.target as HTMLImageElement).closest(".gallery-card") as HTMLElement;
                 if (card) card.style.display = "none";
-                doLayout();
               }}
-              style={{ width: "100%", display: "block", borderRadius: 8 }}
+              style={{ width: "100%", height: "100%", display: "block", objectFit: "cover", borderRadius: 8 }}
             />
             <div className="gallery-overlay">
               <button
