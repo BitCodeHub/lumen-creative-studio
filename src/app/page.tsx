@@ -435,9 +435,9 @@ export default function HomePage() {
         {activeNav === "explore" && (
           <>
             {/* ===== MINIMAL TITLE HEADER ===== */}
-            <div style={{ padding: 20px 24px 14px, textAlign: center }}>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: #fff, margin: 0, letterSpacing: -0.3 }}>
-                Explore <span style={{ color: #4d9fff }}>AI Images</span>
+            <div style={{ padding: "20px 24px 14px", textAlign: "center" }}>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: 0, letterSpacing: -0.3 }}>
+                Explore <span style={{ color: "#4d9fff" }}>AI Images</span>
               </h1>
             </div>
 
