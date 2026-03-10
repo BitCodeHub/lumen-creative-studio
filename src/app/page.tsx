@@ -1018,31 +1018,133 @@ export default function HomePage() {
             </div>
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "6px 14px 12px", flexWrap: "wrap", gap: 8, borderTop: "1px solid #1a1a1a"
+              padding: "6px 16px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
+              flexWrap: "wrap", gap: 8,
             }}>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                <button style={{
-                  display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
-                  borderRadius: 20, border: "1px solid #2a2a2a", background: "#1a1a1a",
-                  fontSize: 12, color: "#bbb", cursor: "pointer", fontWeight: 500
-                }}>
-                  <ImageIcon size={11} color="#4d9fff" />
-                  {MODELS.find(m => m.id === model)?.label}
-                  <ChevronDown size={10} color="#555" />
-                </button>
-                <button style={{
-                  display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
-                  borderRadius: 20, border: "1px solid #2a2a2a", background: "#1a1a1a",
-                  fontSize: 12, color: "#bbb", cursor: "pointer"
-                }}>
-                  <div style={{ width: 10, height: 10, border: "1.5px solid #555", borderRadius: 2 }} />
-                  Auto ratio
-                </button>
-                <button style={{
-                  padding: "4px 10px", borderRadius: 20, border: "1px solid #2a2a2a",
-                  background: "#1a1a1a", fontSize: 12, color: "#bbb", cursor: "pointer"
-                }}>High (2K)</button>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", position: "relative" }}>
+                {/* Model selector */}
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={model}
+                    onChange={e => setModel(e.target.value)}
+                    style={{
+                      appearance: "none", WebkitAppearance: "none",
+                      padding: "5px 28px 5px 10px",
+                      borderRadius: 20, border: "1px solid #2a2a2a",
+                      background: "#1e1e22", fontSize: 12, color: "#bbb",
+                      cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
+                      outline: "none",
+                    }}>
+                    {MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown size={11} color="#555" style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                </div>
+
+                {/* Aspect ratio button */}
+                <div ref={arPanelRef} style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setArPanelOpen(v => !v)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+                      borderRadius: 20,
+                      border: arPanelOpen ? "1px solid #4d9fff" : "1px solid #2a2a2a",
+                      background: arPanelOpen ? "rgba(77,159,255,0.08)" : "#1e1e22",
+                      fontSize: 12, color: arPanelOpen ? "#4d9fff" : "#bbb", cursor: "pointer",
+                    }}>
+                    <div style={{
+                      width: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 13 : 9,
+                      height: ASPECT_RATIOS[selectedAR].w > ASPECT_RATIOS[selectedAR].h ? 9 : 13,
+                      border: "1.5px solid currentColor", borderRadius: 2, flexShrink: 0,
+                    }} />
+                    {ASPECT_RATIOS[selectedAR].label} | {RES_TIERS[resolution].label}
+                    <ChevronDown size={10} color="currentColor" />
+                  </button>
+
+                  {/* Aspect ratio panel — opens upward from floating bar */}
+                  {arPanelOpen && (
+                    <div style={{
+                      position: "absolute", bottom: "calc(100% + 8px)", left: 0,
+                      background: "#1a1a1e", border: "1px solid #2a2a2a", borderRadius: 14,
+                      padding: "16px", zIndex: 300, minWidth: 360,
+                      boxShadow: "0 -8px 40px rgba(0,0,0,0.7)",
+                    }}>
+                      <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>Aspect ratio</p>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                        {ASPECT_RATIOS.map((ar, i) => {
+                          const isWide = ar.w > ar.h;
+                          const isSquare = ar.w === ar.h;
+                          const boxW = isWide ? 22 : isSquare ? 16 : 11;
+                          const boxH = isWide ? 14 : isSquare ? 16 : 22;
+                          return (
+                            <button key={ar.label} onClick={() => selectAR(i)}
+                              style={{
+                                display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+                                padding: "8px 10px", borderRadius: 8, cursor: "pointer",
+                                border: selectedAR === i ? "1.5px solid #4d9fff" : "1.5px solid #2a2a2a",
+                                background: selectedAR === i ? "rgba(77,159,255,0.1)" : "#111",
+                                minWidth: 44,
+                              }}>
+                              <div style={{
+                                width: boxW, height: boxH,
+                                border: `1.5px solid ${selectedAR === i ? "#4d9fff" : "#555"}`,
+                                borderRadius: 2,
+                              }} />
+                              <span style={{ fontSize: 10, color: selectedAR === i ? "#4d9fff" : "#888", fontWeight: 500 }}>{ar.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Resolution</p>
+                      <div style={{ display: "flex", gap: 0, marginBottom: 16, border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden" }}>
+                        {(Object.entries(RES_TIERS) as [ResTier, typeof RES_TIERS[ResTier]][]).map(([key, tier]) => (
+                          <button key={key} onClick={() => changeResolution(key)}
+                            style={{
+                              flex: 1, padding: "9px 4px", border: "none", cursor: "pointer",
+                              background: resolution === key ? "rgba(77,159,255,0.18)" : "#111",
+                              color: resolution === key ? "#4d9fff" : "#666",
+                              fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                              borderRight: key !== "4k" ? "1px solid #2a2a2a" : "none",
+                            }}>
+                            {key === "4k" ? <span>{tier.label} <span style={{ color: "#4dff91", fontSize: 10 }}>✦</span></span> : tier.label}
+                            <div style={{ fontSize: 9, color: resolution === key ? "#4d9fff99" : "#444", marginTop: 2, fontWeight: 400 }}>
+                              {key === "good" ? "1024px" : key === "2k" ? "2048px" : "4x upscale"}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: 11, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Size</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1,
+                          background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "6px 10px" }}>
+                          <span style={{ fontSize: 11, color: "#666", fontWeight: 600, minWidth: 14 }}>W</span>
+                          <input type="number" value={imgW} min={256} max={4096} step={64}
+                            onChange={e => changeW(Number(e.target.value))}
+                            style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                              color: "#ddd", fontSize: 13, fontFamily: "inherit", textAlign: "center" }} />
+                        </div>
+                        <button onClick={() => setArLocked(v => !v)}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #2a2a2a",
+                            background: arLocked ? "rgba(77,159,255,0.15)" : "#111",
+                            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                          {arLocked
+                            ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="#4d9fff" strokeWidth="2"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="#4d9fff" strokeWidth="2"/></svg>
+                            : <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="#555" strokeWidth="2"/><path d="M7 11V7a5 5 0 0110 0" stroke="#555" strokeWidth="2"/></svg>}
+                        </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1,
+                          background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "6px 10px" }}>
+                          <span style={{ fontSize: 11, color: "#666", fontWeight: 600, minWidth: 14 }}>H</span>
+                          <input type="number" value={imgH} min={256} max={4096} step={64}
+                            onChange={e => changeH(Number(e.target.value))}
+                            style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                              color: "#ddd", fontSize: 13, fontFamily: "inherit", textAlign: "center" }} />
+                          <span style={{ fontSize: 10, color: "#444", fontWeight: 500 }}>PX</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 11.5, color: "#444" }}>✦ 0/image</span>
                 <button onClick={() => generate()} disabled={isGenerating || !prompt.trim()}
