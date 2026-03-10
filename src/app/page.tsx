@@ -432,6 +432,15 @@ export default function HomePage() {
           <Archive size={19} />
           <span style={{ fontSize: 9.5, fontWeight: 500 }}>Assets</span>
         </button>
+        <a href="/headshots" title="AI Headshots" style={{
+          width: 52, height: 52, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 3,
+          border: "none", borderRadius: 10, background: "transparent", cursor: "pointer",
+          textDecoration: "none",
+        }}>
+          <span style={{ fontSize: 18 }}>🤳</span>
+          <span style={{ fontSize: 9.5, fontWeight: 500, color: "#555" }}>Headshots</span>
+        </a>
       </aside>
 
       {/* Main content */}
