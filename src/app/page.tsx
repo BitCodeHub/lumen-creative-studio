@@ -166,6 +166,12 @@ function MasonryGrid({
             </div>
             {/* Watermark */}
             <div style={{ position: "absolute", bottom: 7, right: 8, pointerEvents: "none", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.42)", letterSpacing: 0.4, textShadow: "0 1px 4px rgba(0,0,0,0.9)", userSelect: "none", zIndex: 3 }}>© Lumen</div>
+            {/* Prompt hover overlay */}
+            {img.prompt && (
+              <div className="prompt-overlay">
+                <p className="prompt-overlay-text">{img.prompt}</p>
+              </div>
+            )}
           </div>
         );
       })}
@@ -943,9 +949,18 @@ export default function HomePage() {
 
             {/* Prompt */}
             <div style={{ padding: "16px 20px", flex: 1 }}>
-              <p style={{ fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase",
-                letterSpacing: 0.6, marginBottom: 10 }}>Prompt</p>
-              <p style={{ fontSize: 13.5, color: "#bbb", lineHeight: 1.7 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <p style={{ fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, margin: 0 }}>Prompt</p>
+                {selectedImg.prompt && (
+                  <button
+                    onClick={() => copyPrompt(selectedImg.id, selectedImg.prompt)}
+                    style={{ fontSize: 11, color: copied === selectedImg.id ? "#0066ff" : "#666", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "2px 6px" }}
+                  >
+                    {copied === selectedImg.id ? "✓ Copied" : "Copy"}
+                  </button>
+                )}
+              </div>
+              <p style={{ fontSize: 13, color: "#d0d0d0", lineHeight: 1.75, userSelect: "text", cursor: "text", margin: 0, wordBreak: "break-word" }}>
                 {selectedImg.prompt || "No prompt available"}
               </p>
             </div>
@@ -1225,6 +1240,29 @@ export default function HomePage() {
           padding: 6px;
         }
         .gallery-card:hover .gallery-overlay { opacity: 1; }
+
+        .prompt-overlay {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          background: linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.75) 55%, transparent 100%);
+          padding: 32px 9px 9px 9px;
+          transform: translateY(100%);
+          transition: transform 0.22s ease;
+          border-radius: 0 0 8px 8px;
+          z-index: 4;
+          pointer-events: none;
+        }
+        .gallery-card:hover .prompt-overlay { transform: translateY(0); }
+        .prompt-overlay-text {
+          font-size: 10.5px;
+          color: rgba(255,255,255,0.9);
+          line-height: 1.5;
+          margin: 0;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
 
         .like-btn {
           width: 28px; height: 28px; border-radius: 50%;
