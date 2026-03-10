@@ -255,7 +255,7 @@ export default function HomePage() {
         if (reset || p === 1) {
           setImages(imgs);
         } else {
-          setImages(prev => [...prev, ...imgs]);
+          setImages(prev => { const ids = new Set(prev.map((i) => i.id)); return [...prev, ...imgs.filter((i) => !ids.has(i.id))]; });
         }
         setHasMore(data.hasMore ?? false);
         setPage(p);
