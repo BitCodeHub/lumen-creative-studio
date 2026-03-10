@@ -216,6 +216,21 @@ export default function HomePage() {
   // Floating bar state
   const [floatingExpanded, setFloatingExpanded] = useState(false);
 
+  // Reference image state
+  const [refImage, setRefImage] = useState<File | null>(null);
+  const [refImagePreview, setRefImagePreview] = useState<string | null>(null);
+  const [refImageMode, setRefImageMode] = useState<'reference' | 'edit' | 'enhance'>('reference');
+  const refInputRef = useRef<HTMLInputElement>(null);
+  const refInputFloatRef = useRef<HTMLInputElement>(null);
+
+  const handleRefImage = (file: File) => {
+    setRefImage(file);
+    const reader = new FileReader();
+    reader.onload = e => setRefImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+  const clearRefImage = () => { setRefImage(null); setRefImagePreview(null); };
+
   // Image protection
   useEffect(() => {
     const blockContextMenu = (e: MouseEvent) => {
