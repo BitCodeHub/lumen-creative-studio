@@ -250,7 +250,7 @@ export default function HomePage() {
           await new Promise(r => setTimeout(r, 3000));
           try {
             const poll = await fetch(`/api/generate?promptId=${savedId}`).then(r => r.json());
-            if (poll.status === "complete" && poll.imageUrl) {
+            if ((poll.status === "done" || poll.status === "complete") && poll.imageUrl) {
               localStorage.removeItem("lumen_active_prompt_id");
               localStorage.removeItem("lumen_active_prompt_ts");
               setActivePromptId(null);
@@ -456,7 +456,7 @@ export default function HomePage() {
       while (Date.now() - start < 1200000) {
         await new Promise(r => setTimeout(r, 3000));
         const poll = await fetch(`/api/generate?promptId=${promptId}`).then(r => r.json());
-        if (poll.status === "complete" && poll.imageUrl) {
+        if ((poll.status === "done" || poll.status === "complete") && poll.imageUrl) {
           localStorage.removeItem("lumen_active_prompt_id");
           localStorage.removeItem("lumen_active_prompt_ts");
           setActivePromptId(null);
@@ -465,6 +465,15 @@ export default function HomePage() {
           setActiveNav("create");
           setTimeout(() => document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
           setProgress("");
+          return;
+        }
+        if (poll.status === "rejected") {
+          localStorage.removeItem("lumen_active_prompt_id");
+          localStorage.removeItem("lumen_active_prompt_ts");
+          setActivePromptId(null);
+          setIsGenerating(false);
+          setError("QC failed: " + (poll.reason || "Image quality issue") + ". Auto-retrying...");
+          setTimeout(() => { setError(""); generate(); }, 2500);
           return;
         }
         if (poll.status === "error") { setError("Generation failed. Try again."); setIsGenerating(false); return; }

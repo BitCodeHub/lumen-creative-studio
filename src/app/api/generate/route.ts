@@ -201,6 +201,75 @@ export async function POST(request: NextRequest) {
   }
 }
 
+
+// QC check using Gemini Vision — returns { pass, reason }
+async function runQCCheck(imageUrl: string): Promise<{ pass: boolean; reason: string }> {
+  const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB4EzkfKSTezcK2ZEUPWlkShTtDhTpO_Ic";
+  const QC_PROMPT = `You are a strict image quality inspector for a professional AI art gallery.
+
+Analyze this image and REJECT it if it has ANY of these defects:
+
+FACIAL DEFECTS (be very strict):
+- Crooked, asymmetric, or misaligned mouth or lips
+- Crooked, bent, or deformed nose
+- Eyes that are different sizes, misaligned, or pointing different directions
+- Deformed teeth, extra teeth, or fused facial features
+- Uncanny or unsettling face quality that looks clearly AI-generated
+
+TEXT DEFECTS:
+- Garbled, misspelled, or unreadable text anywhere in the image
+- License plates with fake/random letters
+
+ANATOMY DEFECTS:
+- Extra or missing limbs, wrong number of fingers (should be 5)
+- Fused or deformed body parts
+
+TECHNICAL DEFECTS:
+- Watermarks from other AI services
+- Blank areas, glitch artifacts, incomplete generation
+- Extremely blurry or corrupted image
+
+NON-DEFECTS: artistic style, dark lighting, no faces (landscapes/products/food are fine unless technically broken).
+
+Respond with ONLY valid JSON, nothing else:
+{"pass": true, "reason": ""}
+or
+{"pass": false, "reason": "brief defect description"}`;
+
+  try {
+    // Fetch image as base64
+    const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
+    if (!imgRes.ok) return { pass: true, reason: "" }; // non-fatal
+    const imgBuf = await imgRes.arrayBuffer();
+    const b64 = Buffer.from(imgBuf).toString("base64");
+    const mimeType = "image/jpeg";
+
+    const body = {
+      contents: [{
+        parts: [
+          { text: QC_PROMPT },
+          { inline_data: { mime_type: mimeType, data: b64 } }
+        ]
+      }]
+    };
+
+    const gemRes = await fetch(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!gemRes.ok) return { pass: true, reason: "" };
+    const gemData = await gemRes.json();
+    const text = gemData?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const result = JSON.parse(cleaned);
+    return { pass: result.pass !== false, reason: result.reason || "" };
+  } catch {
+    return { pass: true, reason: "" }; // non-fatal: if QC fails, show image
+  }
+}
+
 // GET — poll status by promptId, or health check
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -233,6 +302,12 @@ export async function GET(request: NextRequest) {
                 body: JSON.stringify({ filename: stemName, prompt: savedPrompt }),
               }).catch(() => {});
               promptStore.delete(promptId);
+            }
+            // Run QC check before returning result
+            const qcResult = await runQCCheck(imageUrl);
+            if (!qcResult.pass) {
+              console.log(`[QC] REJECTED: ${image.filename} — ${qcResult.reason}`);
+              return NextResponse.json({ status: "rejected", reason: qcResult.reason, imageUrl, filename: image.filename });
             }
             return NextResponse.json({ status: "done", imageUrl, filename: image.filename, prompt: savedPrompt });
           }
