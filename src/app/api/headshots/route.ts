@@ -39,24 +39,13 @@ function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: n
   const s = HEADSHOT_STYLES[style] || HEADSHOT_STYLES.linkedin;
   const positivePrompt = `RAW photo, ${s.prompt}, photorealistic, detailed skin texture, subsurface scattering, DSLR, sharp focus`;
   const negativePrompt =
-    "deformed, blurry, bad anatomy, extra limbs, text, watermark, ugly, disfigured, low quality, painting, cartoon, anime, gender swap, wrong gender, changed appearance";
+    "deformed, blurry, bad anatomy, extra limbs, text, watermark, ugly, disfigured, low quality, painting, cartoon, anime, gender swap, wrong gender, changed appearance, different person, different face, face change, morphed face, crooked nose, asymmetric face, uneven eyes, misaligned eyes, bad teeth, deformed mouth";
 
   return {
-    // 1. Load checkpoint
+    // 1. Load checkpoint (RealVisXL — best photorealistic base)
     "1": {
       class_type: "CheckpointLoaderSimple",
       inputs: { ckpt_name: "RealVisXL_V4.safetensors" },
-    },
-    // 2. Load LoRA
-    "2": {
-      class_type: "LoraLoader",
-      inputs: {
-        model: ["1", 0],
-        clip: ["1", 1],
-        lora_name: "lumen_headshots_v1.safetensors",
-        strength_model: 0.5,
-        strength_clip: 0.5,
-      },
     },
     // 3. Load reference image (uploaded by user)
     "3": {
@@ -66,7 +55,7 @@ function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: n
     // 4. InstantID Face Analysis
     "4": {
       class_type: "InstantIDFaceAnalysis",
-      inputs: { provider: "CPU" },
+      inputs: { provider: "CUDA" },
     },
     // 5. Load InstantID model (ip-adapter.bin)
     "5": {
@@ -81,12 +70,12 @@ function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: n
     // 7. Positive prompt
     "7": {
       class_type: "CLIPTextEncode",
-      inputs: { text: positivePrompt, clip: ["2", 1] },
+      inputs: { text: positivePrompt, clip: ["1", 1] },
     },
     // 8. Negative prompt
     "8": {
       class_type: "CLIPTextEncode",
-      inputs: { text: negativePrompt, clip: ["2", 1] },
+      inputs: { text: negativePrompt, clip: ["1", 1] },
     },
     // 9. Apply InstantID — strong face lock (weight=0.8)
     "9": {
@@ -96,10 +85,10 @@ function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: n
         insightface: ["4", 0],
         control_net: ["6", 0],
         image: ["3", 0],
-        model: ["2", 0],
+        model: ["1", 0],
         positive: ["7", 0],
         negative: ["8", 0],
-        weight: 0.8,
+        weight: 0.95,
         start_at: 0.0,
         end_at: 1.0,
       },
@@ -118,8 +107,8 @@ function buildInstantIDWorkflow(uploadedFilename: string, style: string, seed: n
         negative: ["9", 2],
         latent_image: ["10", 0],
         seed,
-        steps: 30,
-        cfg: 5.0,
+        steps: 35,
+        cfg: 4.5,
         sampler_name: "dpmpp_2m_sde",
         scheduler: "karras",
         denoise: 1.0,
