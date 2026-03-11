@@ -330,45 +330,36 @@ export default function HeadshotsPage() {
                         key={s.id}
                         onClick={() => toggleStyle(s.id)}
                         style={{
-                          padding: 0,
+                          padding: "14px 12px",
                           borderRadius: 14,
-                          border: active ? "2px solid #7c3aed" : "2px solid transparent",
-                          background: "transparent",
+                          border: active ? "2px solid #7c3aed" : "2px solid rgba(255,255,255,0.08)",
+                          background: active ? "rgba(124,58,237,0.12)" : "rgba(255,255,255,0.03)",
                           cursor: "pointer",
-                          overflow: "hidden",
                           position: "relative",
                           transition: "all 0.15s",
                           outline: "none",
+                          textAlign: "left",
+                          minHeight: 72,
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          gap: 4,
                         }}
                       >
-                        <img
-                          src={s.preview}
-                          alt={s.label}
-                          style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }}
-                        />
-                        <div style={{
-                          position: "absolute", inset: 0,
-                          background: active
-                            ? "linear-gradient(to bottom, rgba(124,58,237,0.3) 0%, rgba(0,0,0,0.7) 100%)"
-                            : "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.75) 100%)",
-                          transition: "background 0.15s",
-                        }} />
                         {active && (
                           <div style={{
                             position: "absolute", top: 8, right: 8,
-                            width: 22, height: 22, borderRadius: "50%",
+                            width: 18, height: 18, borderRadius: "50%",
                             background: "#7c3aed",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}>
-                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </div>
                         )}
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "10px 12px" }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{s.label}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{s.desc}</div>
-                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: active ? "#e9d5ff" : "#fff", lineHeight: 1.2 }}>{s.label}</div>
+                        <div style={{ fontSize: 12, color: active ? "rgba(167,139,250,0.8)" : "rgba(255,255,255,0.4)", lineHeight: 1.3 }}>{s.desc}</div>
                       </button>
                     );
                   })}
