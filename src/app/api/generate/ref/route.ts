@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const workflow = {
       "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: modelFile } },
       "2": { class_type: "CLIPTextEncode", inputs: { text: prompt + ", masterpiece, best quality, highly detailed, photorealistic", clip: ["1", 1] } },
-      "3": { class_type: "CLIPTextEncode", inputs: { text: "deformed, blurry, bad anatomy, disfigured, text, watermark, ugly", clip: ["1", 1] } },
+      "3": { class_type: "CLIPTextEncode", inputs: { text: "crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, bad teeth, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn face, deformed, ugly, blurry, bad anatomy, watermark, text", clip: ["1", 1] } },
       "4": { class_type: "LoadImage", inputs: { image: uploadedName } },
       "5": { class_type: "ImageScale", inputs: { image: ["4", 0], width, height, upscale_method: "lanczos", crop: "center" } },
       "6": { class_type: "VAEEncode", inputs: { pixels: ["5", 0], vae: ["1", 2] } },
