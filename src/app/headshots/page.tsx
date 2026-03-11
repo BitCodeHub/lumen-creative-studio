@@ -211,7 +211,7 @@ export default function HeadshotsPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 32px" }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "clamp(20px, 5vw, 48px) clamp(16px, 4vw, 32px)" }}>
 
         {/* STEP 1 — Upload */}
         {step === 1 && (
@@ -286,15 +286,15 @@ export default function HeadshotsPage() {
         {/* STEP 2 — Style selection */}
         {step === 2 && (
           <div>
-            <div style={{ display: "flex", gap: 40, alignItems: "flex-start" }}>
+            <div style={{ display: "flex", gap: 32, alignItems: "flex-start", flexWrap: "wrap" }}>
               
               {/* Left: photo + change */}
-              <div style={{ flexShrink: 0 }}>
-                <div style={{ position: "relative", width: 160 }}>
+              <div style={{ flexShrink: 0, width: "100%" }}>
+                <div style={{ position: "relative", width: 120, margin: "0 auto" }}>
                   <img
                     src={photoPreview!}
                     alt="Your photo"
-                    style={{ width: 160, height: 200, objectFit: "cover", objectPosition: "center top", borderRadius: 16, display: "block" }}
+                    style={{ width: 120, height: 150, objectFit: "cover", objectPosition: "center top", borderRadius: 14, display: "block" }}
                   />
                   <button
                     onClick={() => fileRef.current?.click()}
@@ -316,13 +316,13 @@ export default function HeadshotsPage() {
               </div>
 
               {/* Right: style grid + CTA */}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
                 <div style={{ marginBottom: 24 }}>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 6 }}>Choose your styles</h2>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.5, marginBottom: 6 }}>Choose your styles</h2>
                   <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>Select up to 6 — we'll generate one headshot per style</p>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10, marginBottom: 28 }}>
                   {STYLES.map((s) => {
                     const active = selectedStyles.includes(s.id);
                     return (
@@ -697,6 +697,9 @@ export default function HeadshotsPage() {
         @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         * { box-sizing: border-box; }
         .headshots-card:hover .dl-btn { opacity: 1 !important; }
+        @media (max-width: 600px) {
+          main { padding: 20px 16px !important; }
+        }
       `}</style>
     </div>
   );
