@@ -186,6 +186,10 @@ export default function HomePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
+  const [activePromptId, setActivePromptId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("lumen_active_prompt_id");
+    return null;
+  });
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [liked, setLiked] = useState<Set<string>>(new Set());
@@ -230,6 +234,56 @@ export default function HomePage() {
     reader.readAsDataURL(file);
   };
   const clearRefImage = () => { setRefImage(null); setRefImagePreview(null); };
+
+  // Resume polling if page was refreshed mid-generation
+  useEffect(() => {
+    const savedId = localStorage.getItem("lumen_active_prompt_id");
+    const savedTs = parseInt(localStorage.getItem("lumen_active_prompt_ts") || "0");
+    const age = Date.now() - savedTs;
+    // Only resume if started within last 10 minutes
+    if (savedId && age < 600000) {
+      setIsGenerating(true);
+      setProgress("Resuming generation...");
+      const resume = async () => {
+        const start = savedTs;
+        while (Date.now() - start < 600000) {
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            const poll = await fetch(`/api/generate?promptId=${savedId}`).then(r => r.json());
+            if (poll.status === "complete" && poll.imageUrl) {
+              localStorage.removeItem("lumen_active_prompt_id");
+              localStorage.removeItem("lumen_active_prompt_ts");
+              setActivePromptId(null);
+              setGeneratedImage(poll.imageUrl);
+              setIsGenerating(false);
+              setProgress("");
+              return;
+            }
+            if (poll.status === "error") {
+              localStorage.removeItem("lumen_active_prompt_id");
+              localStorage.removeItem("lumen_active_prompt_ts");
+              setIsGenerating(false);
+              setProgress("");
+              setError("Generation failed.");
+              return;
+            }
+            setProgress(`Still generating... ${Math.round((Date.now() - start) / 1000)}s`);
+          } catch {}
+        }
+        localStorage.removeItem("lumen_active_prompt_id");
+        localStorage.removeItem("lumen_active_prompt_ts");
+        setIsGenerating(false);
+        setProgress("");
+        setError("Timed out.");
+      };
+      resume();
+    } else if (savedId) {
+      // Stale — clean up
+      localStorage.removeItem("lumen_active_prompt_id");
+      localStorage.removeItem("lumen_active_prompt_ts");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Image protection
   useEffect(() => {
@@ -391,12 +445,19 @@ export default function HomePage() {
       }
       const { promptId, error: err } = await res.json();
       if (err || !promptId) { setError(err || "Failed to start"); setIsGenerating(false); return; }
+      // Persist promptId so page refresh can resume polling
+      setActivePromptId(promptId);
+      localStorage.setItem("lumen_active_prompt_id", promptId);
+      localStorage.setItem("lumen_active_prompt_ts", String(Date.now()));
       setProgress("Generating...");
       const start = Date.now();
       while (Date.now() - start < 600000) {
         await new Promise(r => setTimeout(r, 3000));
         const poll = await fetch(`/api/generate?promptId=${promptId}`).then(r => r.json());
         if (poll.status === "complete" && poll.imageUrl) {
+          localStorage.removeItem("lumen_active_prompt_id");
+          localStorage.removeItem("lumen_active_prompt_ts");
+          setActivePromptId(null);
           setGeneratedImage(poll.imageUrl);
           setIsGenerating(false);
           setProgress("");
