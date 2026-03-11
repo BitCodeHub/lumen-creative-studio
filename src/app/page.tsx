@@ -257,6 +257,8 @@ export default function HomePage() {
               setGeneratedImage(poll.imageUrl);
               setIsGenerating(false);
               setProgress("");
+              setActiveNav("create");
+              setTimeout(() => document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
               return;
             }
             if (poll.status === "error") {
@@ -460,6 +462,8 @@ export default function HomePage() {
           setActivePromptId(null);
           setGeneratedImage(poll.imageUrl);
           setIsGenerating(false);
+          setActiveNav("create");
+          setTimeout(() => document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
           setProgress("");
           return;
         }
@@ -912,25 +916,36 @@ export default function HomePage() {
                 {error}
               </div>}
               {generatedImage && (
-                <div style={{ marginTop: 16 }}>
-                  <img src={generatedImage} alt="Generated"
-                    style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid #1e1e1e" }} />
-                  <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                    <a href={generatedImage} download="generated.png"
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6, padding: "7px 14px",
-                        background: "#161616", border: "1px solid #2a2a2a", borderRadius: 8,
-                        color: "#bbb", textDecoration: "none", fontSize: 13
-                      }}>
-                      <Download size={13} /> Download
-                    </a>
-                    <button onClick={() => setActiveNav("explore")}
-                      style={{
-                        padding: "7px 14px", background: "transparent", border: "1px solid #1e1e1e",
-                        borderRadius: 8, color: "#555", fontSize: 13, cursor: "pointer"
-                      }}>
-                      ← Explore
-                    </button>
+                <div id="generated-result" style={{ marginTop: 20 }}>
+                  <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <img src={generatedImage} alt="Generated"
+                      style={{ width: "100%", display: "block", borderRadius: 14 }} />
+                    <div style={{
+                      position: "absolute", bottom: 0, left: 0, right: 0,
+                      background: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
+                      padding: "24px 16px 16px",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                    }}>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Your generation</span>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <a href={generatedImage} download="lumen-generated.png"
+                          style={{
+                            display: "flex", alignItems: "center", gap: 5, padding: "7px 14px",
+                            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                            border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8,
+                            color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 600,
+                          }}>
+                          <Download size={12} /> Download
+                        </a>
+                        <button onClick={() => setGeneratedImage(null)}
+                          style={{
+                            padding: "7px 12px",
+                            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+                            color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer",
+                          }}>New</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
