@@ -241,12 +241,12 @@ export default function HomePage() {
     const savedTs = parseInt(localStorage.getItem("lumen_active_prompt_ts") || "0");
     const age = Date.now() - savedTs;
     // Only resume if started within last 10 minutes
-    if (savedId && age < 600000) {
+    if (savedId && age < 1200000) {
       setIsGenerating(true);
       setProgress("Resuming generation...");
       const resume = async () => {
         const start = savedTs;
-        while (Date.now() - start < 600000) {
+        while (Date.now() - start < 1200000) {
           await new Promise(r => setTimeout(r, 3000));
           try {
             const poll = await fetch(`/api/generate?promptId=${savedId}`).then(r => r.json());
@@ -276,7 +276,7 @@ export default function HomePage() {
         localStorage.removeItem("lumen_active_prompt_ts");
         setIsGenerating(false);
         setProgress("");
-        setError("Timed out.");
+        setError("Generation timed out. Try again or use FLUX Schnell for faster results.");
       };
       resume();
     } else if (savedId) {
@@ -453,7 +453,7 @@ export default function HomePage() {
       localStorage.setItem("lumen_active_prompt_ts", String(Date.now()));
       setProgress("Generating...");
       const start = Date.now();
-      while (Date.now() - start < 600000) {
+      while (Date.now() - start < 1200000) {
         await new Promise(r => setTimeout(r, 3000));
         const poll = await fetch(`/api/generate?promptId=${promptId}`).then(r => r.json());
         if (poll.status === "complete" && poll.imageUrl) {
@@ -470,7 +470,7 @@ export default function HomePage() {
         if (poll.status === "error") { setError("Generation failed. Try again."); setIsGenerating(false); return; }
         setProgress(`Generating... ${Math.round((Date.now() - start) / 1000)}s`);
       }
-      setError("Timed out — try FLUX Schnell for faster results");
+      setError("Generation timed out (>20 min). Try FLUX Schnell for instant results.");
     } catch { setError("AI temporarily unavailable. Please try again."); }
     setIsGenerating(false);
     setProgress("");
