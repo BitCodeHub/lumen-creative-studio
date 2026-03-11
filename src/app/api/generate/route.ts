@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// In-memory map of promptId -> prompt text (survives within the same process instance)
+const promptStore = new Map<string, string>();
+
 // Use env var for ngrok URL, fallback to Tailscale for local dev
 const COMFYUI_URL = process.env.COMFY_URL || "http://100.79.93.27:8188";
 
@@ -183,6 +186,10 @@ export async function POST(request: NextRequest) {
     const promptId = await queuePrompt(workflow);
     console.log(`[Generate] Queued: ${promptId}`);
 
+
+    // Store prompt for saving to prompts.json on completion
+    promptStore.set(promptId, prompt);
+    setTimeout(() => promptStore.delete(promptId), 1800000);
     return NextResponse.json({ promptId, model });
 
   } catch (error) {
@@ -217,7 +224,17 @@ export async function GET(request: NextRequest) {
             // Return direct comfyui URL — proxied via /api/generate/image on client
             const rawUrl = `${COMFYUI_URL}/view?filename=${encodeURIComponent(image.filename)}&subfolder=${encodeURIComponent(image.subfolder || "")}&type=${image.type}`;
             const imageUrl = `/api/generate/image?src=${encodeURIComponent(rawUrl)}`;
-            return NextResponse.json({ status: "done", imageUrl, filename: image.filename });
+            const savedPrompt = promptStore.get(promptId) || "";
+            if (savedPrompt) {
+              const stemName = image.filename.replace(/\.\w+$/, "");
+              fetch("https://lumen-gallery.ngrok.app/save_prompt", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+                body: JSON.stringify({ filename: stemName, prompt: savedPrompt }),
+              }).catch(() => {});
+              promptStore.delete(promptId);
+            }
+            return NextResponse.json({ status: "done", imageUrl, filename: image.filename, prompt: savedPrompt });
           }
         }
       }
