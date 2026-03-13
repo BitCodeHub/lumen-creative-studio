@@ -1,81 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OLLAMA_URL = 'https://lumen-ollama.ngrok.app';
+const OLLAMA_URL = process.env.OLLAMA_URL || 'https://lumen-ollama.ngrok.app';
 
-const ENHANCE_SYSTEM = `You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs, lighting, and quality tags. Max 80 words. Return ONLY the enhanced prompt.`;
+export const maxDuration = 60;
+
+const SYSTEM = 'You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs (Canon 5D, 85mm f/1.4), lighting (golden hour, studio softbox), and technical quality tags. Return ONLY the enhanced prompt in one paragraph, max 80 words.';
 
 export async function POST(request: NextRequest) {
   try {
     const { prompt } = await request.json();
     if (!prompt) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    // Use streaming to avoid Render timeout, then collect full response
-    const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+    const upstream = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama3.3:70b',
         messages: [
-          { role: 'system', content: ENHANCE_SYSTEM },
-          { role: 'user', content: `Enhance this prompt (max 80 words): "${prompt}"` }
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: `Enhance this image prompt (max 80 words): "${prompt}"` }
         ],
         stream: true,
         think: false,
         options: { num_predict: 150, temperature: 0.7 }
       }),
-      signal: AbortSignal.timeout(58000)
     });
 
-    if (!res.ok || !res.body) {
+    if (!upstream.ok || !upstream.body) {
       return NextResponse.json({ error: 'Enhancement failed' }, { status: 500 });
     }
 
-    // Stream response back to client
+    // Stream NDJSON from Ollama → client as SSE
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = '';
-
+    const body = new ReadableStream({
+      async start(ctrl) {
+        const reader = upstream.body!.getReader();
+        const dec = new TextDecoder();
+        let buf = '';
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n').filter(l => l.trim());
+            buf += dec.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop() || '';
             for (const line of lines) {
+              if (!line.trim()) continue;
               try {
-                const data = JSON.parse(line);
-                const token = data.message?.content || '';
-                if (token) {
-                  fullContent += token;
-                  // Stream each token
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token })}\n\n`));
-                }
-                if (data.done) {
-                  const cleaned = fullContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, enhanced: cleaned })}\n\n`));
-                }
+                const obj = JSON.parse(line);
+                const token = obj.message?.content || '';
+                if (token) ctrl.enqueue(encoder.encode(`data: ${JSON.stringify({ t: token })}\n\n`));
               } catch {}
             }
           }
-        } catch (e) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`));
+          ctrl.enqueue(encoder.encode('data: [DONE]\n\n'));
+        } catch {
+          ctrl.enqueue(encoder.encode(`data: ${JSON.stringify({ error: true })}\n\n`));
         }
-        controller.close();
+        ctrl.close();
       }
     });
 
-    return new NextResponse(stream, {
+    return new NextResponse(body, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
       }
     });
-  } catch (error) {
-    console.error('[Enhance] Error:', error);
+  } catch (e) {
     return NextResponse.json({ error: 'Enhancement failed' }, { status: 500 });
   }
 }
