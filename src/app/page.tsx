@@ -437,6 +437,8 @@ export default function HomePage() {
         fd.append("width", String(imgW));
         fd.append("height", String(imgH));
         fd.append("mode", refImageMode);
+        // Use Gemini (Nano Banana 2.0) when user provides reference image + text prompt
+        if (prompt.trim()) fd.append("useGemini", "true");
         res = await fetch("/api/generate/ref", { method: "POST", body: fd });
       } else {
         res = await fetch("/api/generate", {
@@ -445,7 +447,17 @@ export default function HomePage() {
           body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: RES_TIERS[resolution].upscale4k }),
         });
       }
-      const { promptId, error: err } = await res.json();
+      const data = await res.json();
+      // Gemini (Nano Banana 2.0) returns image directly — no polling needed
+      if (data.type === "gemini" && data.image) {
+        setGeneratedImage(data.image);
+        setIsGenerating(false);
+        setActiveNav("create");
+        setTimeout(() => document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+        setProgress("");
+        return;
+      }
+      const { promptId, error: err } = data;
       if (err || !promptId) { setError(err || "Failed to start"); setIsGenerating(false); return; }
       // Persist promptId so page refresh can resume polling
       setActivePromptId(promptId);
