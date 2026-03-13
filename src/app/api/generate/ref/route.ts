@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     uploadForm.append("type", "input");
     uploadForm.append("overwrite", "true");
 
-    const uploadRes = await fetch(, {
+    const uploadRes = await fetch(`${COMFY_URL}/upload/image`, {
       method: "POST",
       body: uploadForm,
       headers: { "ngrok-skip-browser-warning": "1" },
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       "9": { class_type: "SaveImage", inputs: { images: ["8", 0], filename_prefix: "ref_gen" } },
     };
 
-    const queueRes = await fetch(, {
+    const queueRes = await fetch(`${COMFY_URL}/prompt`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
       body: JSON.stringify({ prompt: workflow }),
