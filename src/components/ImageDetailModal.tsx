@@ -332,7 +332,7 @@ export default function ImageDetailModal({ image, onClose }: ImageDetailModalPro
             }}
           >
             {isEnhancing ? (
-              <><Loader2 size={16} className="animate-spin" /> Enhancing with Llama 3.3 70B...</>
+              <><Loader2 size={16} className="animate-spin" /> Enhancing prompt...</>
             ) : (
               <><Sparkles size={16} /> ✨ AI Enhance Prompt</>
             )}
