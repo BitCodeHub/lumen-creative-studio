@@ -307,6 +307,29 @@ export default function HomePage() {
 
   // Detail view state
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  // AI Enhance state (for detail panel)
+  const [enhancedPrompt, setEnhancedPrompt] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState("");
+  const [copiedEnhanced, setCopiedEnhanced] = useState(false);
+  const [detailRatio, setDetailRatio] = useState("3:4");
+  const [detailRes, setDetailRes] = useState("1024");
+  const DETAIL_RATIOS = ["1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
+  const DETAIL_RES = ["768","1024","1280"];
+  const handleEnhancePrompt = async (promptText: string) => {
+    if (!promptText || isEnhancing) return;
+    setIsEnhancing(true); setEnhanceError(""); setEnhancedPrompt("");
+    try {
+      const res = await fetch("/api/enhance-prompt", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptText }),
+      });
+      const data = await res.json();
+      if (data.enhanced) setEnhancedPrompt(data.enhanced);
+      else setEnhanceError("Enhancement failed.");
+    } catch { setEnhanceError("Connection error."); }
+    finally { setIsEnhancing(false); }
+  };
 
   const fetchGallery = useCallback(async (p: number, reset = false, retries = 2) => {
     if (fetchingRef.current) return;
@@ -1107,6 +1130,73 @@ export default function HomePage() {
               <p style={{ fontSize: 13, color: "#d0d0d0", lineHeight: 1.75, userSelect: "text", cursor: "text", margin: 0, wordBreak: "break-word" }}>
                 {selectedImg.prompt || "No prompt available"}
               </p>
+
+              {/* ✨ AI Enhance Prompt */}
+              <button
+                onClick={() => { setEnhancedPrompt(""); handleEnhancePrompt(selectedImg.prompt); }}
+                disabled={isEnhancing}
+                style={{
+                  width: "100%", marginTop: 14, padding: "10px", borderRadius: 8,
+                  background: isEnhancing ? "rgba(139,92,246,0.06)" : "linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.18))",
+                  border: "1px solid rgba(139,92,246,0.35)",
+                  color: isEnhancing ? "#666" : "#c084fc",
+                  fontWeight: 700, fontSize: 13, cursor: isEnhancing ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}>
+                {isEnhancing
+                  ? <><Loader2 size={14} style={{animation:"spin 1s linear infinite"}} /> Enhancing...</>
+                  : <><Sparkles size={14} /> ✨ AI Enhance Prompt</>
+                }
+              </button>
+              {enhanceError && <p style={{color:"#f87171",fontSize:12,marginTop:4}}>{enhanceError}</p>}
+
+              {enhancedPrompt && (
+                <div style={{marginTop:10}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{fontSize:11,color:"#a855f7",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>✨ Enhanced</span>
+                    <button onClick={() => { navigator.clipboard.writeText(enhancedPrompt); setCopiedEnhanced(true); setTimeout(()=>setCopiedEnhanced(false),2000); }}
+                      style={{background:"none",border:"none",cursor:"pointer",color:copiedEnhanced?"#4dff91":"#555",fontSize:11,fontWeight:600}}>
+                      {copiedEnhanced ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <textarea value={enhancedPrompt} onChange={e=>setEnhancedPrompt(e.target.value)} rows={5}
+                    style={{width:"100%",background:"#0d0d0d",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,
+                      padding:10,color:"#d4b8ff",fontSize:12,lineHeight:1.6,resize:"vertical",
+                      boxSizing:"border-box",fontFamily:"inherit"}} />
+                </div>
+              )}
+
+              {/* Aspect Ratio */}
+              <div style={{marginTop:12}}>
+                <span style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,display:"block",marginBottom:5}}>Aspect Ratio</span>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {DETAIL_RATIOS.map(r=>(
+                    <button key={r} onClick={()=>setDetailRatio(r)}
+                      style={{padding:"3px 8px",borderRadius:5,fontSize:12,cursor:"pointer",
+                        background:detailRatio===r?"rgba(139,92,246,0.25)":"#1a1a1a",
+                        border:detailRatio===r?"1px solid rgba(139,92,246,0.5)":"1px solid #2a2a2a",
+                        color:detailRatio===r?"#c084fc":"#666"}}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resolution */}
+              <div style={{marginTop:8}}>
+                <span style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,display:"block",marginBottom:5}}>Resolution</span>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {DETAIL_RES.map(r=>(
+                    <button key={r} onClick={()=>setDetailRes(r)}
+                      style={{padding:"3px 8px",borderRadius:5,fontSize:12,cursor:"pointer",
+                        background:detailRes===r?"rgba(139,92,246,0.25)":"#1a1a1a",
+                        border:detailRes===r?"1px solid rgba(139,92,246,0.5)":"1px solid #2a2a2a",
+                        color:detailRes===r?"#c084fc":"#666"}}>
+                      {r}px
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Like */}
