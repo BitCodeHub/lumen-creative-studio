@@ -31,19 +31,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Proxy image URLs through our API to avoid ngrok browser warning
-    const images = (data.images || []).map((img: { id: string; prompt?: string; model?: string; [key: string]: unknown }) => ({
-      ...img,
-      imageUrl: `/api/gallery/image?file=${encodeURIComponent(img.id)}`,
-      prompt: img.prompt || labelFromId(img.id as string),
-      model: img.model || 'Lumen AI',
-    }));
+    // Gallery server returns "filename" field (not "id")
+    const images = (data.images || []).map((img: { filename?: string; id?: string; prompt?: string; model?: string; [key: string]: unknown }) => {
+      const filename = (img.filename || img.id || '') as string;
+      return {
+        ...img,
+        id: filename,
+        filename,
+        imageUrl: `/api/gallery/image?file=${encodeURIComponent(filename)}`,
+        prompt: img.prompt || labelFromId(filename),
+        model: img.model || 'Lumen AI',
+      };
+    });
+
+    const totalPages = data.pages || Math.ceil((data.total || 0) / limit);
 
     return NextResponse.json({
       images,
       total: data.total,
-      page: data.page,
-      limit: data.limit,
-      hasMore: data.hasMore,
+      page: data.page || page,
+      limit: data.limit || limit,
+      hasMore: page < totalPages,
     });
   } catch {
     return NextResponse.json({ images: [], total: 0, page, limit, hasMore: false });
