@@ -319,10 +319,20 @@ export default function HomePage() {
   const handleEnhancePrompt = async (promptText: string) => {
     if (!promptText || isEnhancing) return;
     setIsEnhancing(true); setEnhanceError(""); setEnhancedPrompt("");
+    const OLLAMA = "https://lumen-ollama.ngrok.app";
+    const SYSTEM = "You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs (Canon 5D, 85mm f/1.4), lighting (golden hour, studio softbox), mood, and technical quality tags. Return ONLY the enhanced prompt in one paragraph, max 100 words.";
     try {
-      const res = await fetch("/api/enhance-prompt", {
+      const res = await fetch(`${OLLAMA}/api/chat`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: promptText }),
+        body: JSON.stringify({
+          model: "llama3.3:70b",
+          messages: [
+            { role: "system", content: SYSTEM },
+            { role: "user", content: `Enhance this image prompt (max 100 words): "${promptText}"` }
+          ],
+          stream: true, think: false,
+          options: { num_predict: 150, temperature: 0.7 }
+        }),
       });
       if (!res.ok || !res.body) { setEnhanceError("Enhancement failed."); return; }
       const reader = res.body.getReader();
@@ -332,18 +342,17 @@ export default function HomePage() {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+        const lines = chunk.split("\n").filter(l => l.trim());
         for (const line of lines) {
           try {
-            const data = JSON.parse(line.slice(6));
-            if (data.token) { accumulated += data.token; setEnhancedPrompt(accumulated); }
-            if (data.done && data.enhanced) setEnhancedPrompt(data.enhanced);
-            if (data.error) setEnhanceError("Enhancement failed.");
+            const data = JSON.parse(line);
+            const token = data.message?.content || "";
+            if (token) { accumulated += token; setEnhancedPrompt(accumulated); }
           } catch {}
         }
       }
       if (!accumulated) setEnhanceError("Enhancement failed.");
-    } catch { setEnhanceError("Connection error."); }
+    } catch (e) { setEnhanceError("Connection error."); }
     finally { setIsEnhancing(false); }
   };
 
