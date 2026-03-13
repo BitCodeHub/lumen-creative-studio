@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OLLAMA_URL = 'http://100.79.93.27:11434';
+const OLLAMA_URL = 'https://lumen-ollama.ngrok.app';
 
 const ENHANCE_SYSTEM = `You are an expert AI image prompt engineer specializing in photorealistic, cinematic, and editorial photography. 
 Your job is to transform basic image prompts into highly detailed, professional prompts that produce stunning, magazine-quality results.
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen3.5:122b',
+        model: 'llama3.3:70b',
         messages: [
           { role: 'system', content: ENHANCE_SYSTEM },
           { role: 'user', content: userMessage }
