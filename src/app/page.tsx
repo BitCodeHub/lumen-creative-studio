@@ -324,9 +324,25 @@ export default function HomePage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: promptText }),
       });
-      const data = await res.json();
-      if (data.enhanced) setEnhancedPrompt(data.enhanced);
-      else setEnhanceError("Enhancement failed.");
+      if (!res.ok || !res.body) { setEnhanceError("Enhancement failed."); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.token) { accumulated += data.token; setEnhancedPrompt(accumulated); }
+            if (data.done && data.enhanced) setEnhancedPrompt(data.enhanced);
+            if (data.error) setEnhanceError("Enhancement failed.");
+          } catch {}
+        }
+      }
+      if (!accumulated) setEnhanceError("Enhancement failed.");
     } catch { setEnhanceError("Connection error."); }
     finally { setIsEnhancing(false); }
   };
