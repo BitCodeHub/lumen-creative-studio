@@ -1,6 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const COMFY_URL = process.env.COMFY_URL || "http://localhost:8188";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyB4EzkfKSTezcK2ZEUPWlkShTtDhTpO_Ic";
+const GEMINI_IMAGE_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`;
+
+async function generateWithGemini(refImageBytes: ArrayBuffer, mimeType: string, prompt: string): Promise<Buffer | null> {
+  const base64Image = Buffer.from(refImageBytes).toString("base64");
+
+  const payload = {
+    contents: [
+      {
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType, data: base64Image } },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ["image", "text"],
+    },
+  };
+
+  const res = await fetch(GEMINI_IMAGE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    console.error("Gemini error:", res.status, await res.text());
+    return null;
+  }
+
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (part.inline_data?.mime_type?.startsWith("image/")) {
+      return Buffer.from(part.inline_data.data, "base64");
+    }
+  }
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,9 +51,30 @@ export async function POST(req: NextRequest) {
     const width = parseInt((form.get("width") as string) || "832");
     const height = parseInt((form.get("height") as string) || "1216");
     const mode = (form.get("mode") as string) || "reference";
+    // useGemini flag: set by frontend when user uploads reference + text
+    const useGemini = (form.get("useGemini") as string) === "true" || mode === "gemini";
 
     if (!refImage) return NextResponse.json({ error: "No reference image" }, { status: 400 });
 
+    // === GEMINI PATH: reference image + text prompt → Nano Banana 2.0 ===
+    if (useGemini) {
+      const imageBytes = await refImage.arrayBuffer();
+      const mimeType = refImage.type || "image/jpeg";
+
+      const imageBuffer = await generateWithGemini(imageBytes, mimeType, prompt);
+      if (!imageBuffer) {
+        return NextResponse.json({ error: "Gemini generation failed" }, { status: 500 });
+      }
+
+      // Return image directly as base64 data URL for immediate display
+      const base64 = imageBuffer.toString("base64");
+      return NextResponse.json({
+        type: "gemini",
+        image: `data:image/png;base64,${base64}`,
+      });
+    }
+
+    // === COMFYUI PATH: standard img2img via IP-Adapter ===
     // Upload ref image to ComfyUI
     const uploadForm = new FormData();
     uploadForm.append("image", refImage, refImage.name || "ref.jpg");
@@ -28,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (!uploadRes.ok) return NextResponse.json({ error: "Failed to upload reference image" }, { status: 500 });
     const { name: uploadedName } = await uploadRes.json();
 
-    // IP-Adapter img2img workflow using reference image
+    // Model selection
     const modelFile = model === "flux-schnell"
       ? "flux1-schnell-fp8.safetensors"
       : model === "flux-dev"
@@ -37,7 +98,6 @@ export async function POST(req: NextRequest) {
       ? "juggernautXL_v9.safetensors"
       : "RealVisXL_V4.safetensors";
 
-    // Strength based on mode
     const denoisingStrength = mode === "enhance" ? 0.35 : mode === "edit" ? 0.65 : 0.85;
 
     const workflow = {
