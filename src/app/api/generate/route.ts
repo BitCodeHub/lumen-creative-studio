@@ -5,6 +5,50 @@ const promptStore = new Map<string, string>();
 
 // Use env var for ngrok URL, fallback to Tailscale for local dev
 const COMFYUI_URL = process.env.COMFY_URL || "http://100.79.93.27:8188";
+// Nano Banana 2.0 = Gemini 3.1 Flash Image
+const GEMINI_API_KEY_GEN = process.env.GEMINI_API_KEY || "AIzaSyAEx5gQBzTi9lUMNXoqWSGuPfqEnYPXq4I";
+const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview";
+const GEMINI_IMAGE_URL_GEN = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${GEMINI_API_KEY_GEN}`;
+
+// Keywords that indicate text should appear in the generated image
+const TEXT_IN_IMAGE_KEYWORDS = [
+  "text:", "write ", "written", "label", "caption", "title:", "headline",
+  "logo", "sign", "banner", "poster", "typography", "font", "words",
+  "quote", "saying", "reads", "that says", "with text", "with the text",
+  "social media post", "instagram post", "tweet", "ad copy", "tagline",
+  "infographic", "overlay text", "subtitle", "watermark text",
+];
+
+function promptHasTextRequest(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  return TEXT_IN_IMAGE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+async function generateWithGeminiText(prompt: string): Promise<{ image: string } | null> {
+  const payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: ["image", "text"] },
+  };
+
+  const res = await fetch(GEMINI_IMAGE_URL_GEN, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) { console.error("Gemini text-image error:", res.status); return null; }
+
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (part.inline_data?.mime_type?.startsWith("image/")) {
+      return { image: `data:image/png;base64,${part.inline_data.data}` };
+    }
+  }
+  return null;
+}
+
+
 
 // FLUX.1-dev workflow
 function createFluxDevWorkflow(prompt: string, seed?: number) {
@@ -144,6 +188,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Generate] Model: ${model}, Size: ${width}x${height}, 4K: ${upscale4k}, Prompt: ${prompt.slice(0, 60)}...`);
+
+    // === NANO BANANA 2.0 (Gemini 3.1): use when prompt requests text in image ===
+    if (promptHasTextRequest(prompt)) {
+      console.log(`[Generate] Routing to Nano Banana 2.0 (Gemini 3.1) — text-in-image detected`);
+      const result = await generateWithGeminiText(prompt);
+      if (result) {
+        return NextResponse.json({ type: "gemini", image: result.image, status: "done" });
+      }
+      // Fallback to ComfyUI if Gemini fails
+      console.log("[Generate] Gemini failed, falling back to ComfyUI");
+    }
 
     // Select workflow based on model
     let workflow: Record<string, any>;
