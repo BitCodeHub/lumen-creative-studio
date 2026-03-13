@@ -307,6 +307,61 @@ export default function HomePage() {
 
   // Detail view state
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [enhancedPrompt, setEnhancedPrompt] = useState<string>("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState("");
+  const [copiedEnhanced, setCopiedEnhanced] = useState(false);
+  const [detailRatio, setDetailRatio] = useState("3:4");
+  const [detailRes, setDetailRes] = useState("1024");
+  const DETAIL_RATIOS = ["1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
+  const DETAIL_RES = ["768","1024","1280"];
+  const handleEnhancePrompt = async (promptText: string) => {
+    if (!promptText || isEnhancing) return;
+    setIsEnhancing(true);
+    setEnhanceError("");
+    setEnhancedPrompt("");
+    try {
+      const res = await fetch("/api/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptText }),
+      });
+      const data = await res.json();
+      if (data.enhanced) setEnhancedPrompt(data.enhanced);
+      else setEnhanceError("Enhancement failed. Try again.");
+    } catch { setEnhanceError("Connection error."); }
+    finally { setIsEnhancing(false); }
+  };
+  const [enhancedPrompt, setEnhancedPrompt] = useState<string>("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState("");
+  const [copiedEnhanced, setCopiedEnhanced] = useState(false);
+  const [detailRatio, setDetailRatio] = useState("3:4");
+  const [detailRes, setDetailRes] = useState("1024");
+
+  const DETAIL_RATIOS = ["1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
+  const DETAIL_RES = ["768","1024","1280"];
+
+  const handleEnhancePrompt = async (promptText: string) => {
+    if (!promptText || isEnhancing) return;
+    setIsEnhancing(true);
+    setEnhanceError("");
+    setEnhancedPrompt("");
+    try {
+      const res = await fetch("/api/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptText }),
+      });
+      const data = await res.json();
+      if (data.enhanced) setEnhancedPrompt(data.enhanced);
+      else setEnhanceError("Enhancement failed. Try again.");
+    } catch {
+      setEnhanceError("Connection error.");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
 
   const fetchGallery = useCallback(async (p: number, reset = false, retries = 2) => {
     if (fetchingRef.current) return;
@@ -508,6 +563,14 @@ export default function HomePage() {
   };
 
   const selectedImg = selectedIdx !== null ? images[selectedIdx] : null;
+
+  // Reset enhance state when switching images
+  const prevSelectedIdx = useRef<number | null>(null);
+  if (prevSelectedIdx.current !== selectedIdx) {
+    prevSelectedIdx.current = selectedIdx;
+    if (enhancedPrompt) setEnhancedPrompt("");
+    if (enhanceError) setEnhanceError("");
+  }
 
   return (
     <div style={{
@@ -983,10 +1046,10 @@ export default function HomePage() {
             background: "rgba(0,0,0,0.95)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
-          onClick={() => setSelectedIdx(null)}
+          onClick={() => { setSelectedIdx(null); setEnhancedPrompt(""); setEnhanceError(""); }}
         >
           {/* Close */}
-          <button onClick={() => setSelectedIdx(null)} style={{
+          <button onClick={() => { setSelectedIdx(null); setEnhancedPrompt(""); setEnhanceError(""); }} style={{
             position: "absolute", top: 16, right: 16,
             width: 36, height: 36, borderRadius: "50%",
             border: "none", background: "rgba(255,255,255,0.1)",
@@ -1107,6 +1170,163 @@ export default function HomePage() {
               <p style={{ fontSize: 13, color: "#d0d0d0", lineHeight: 1.75, userSelect: "text", cursor: "text", margin: 0, wordBreak: "break-word" }}>
                 {selectedImg.prompt || "No prompt available"}
               </p>
+
+              {/* AI Enhance Prompt */}
+              <button
+                onClick={() => handleEnhancePrompt(selectedImg.prompt)}
+                disabled={isEnhancing}
+                style={{
+                  width: "100%", marginTop: 14, padding: "10px", borderRadius: 8,
+                  background: isEnhancing ? "rgba(139,92,246,0.08)" : "linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.18))",
+                  border: "1px solid rgba(139,92,246,0.35)",
+                  color: isEnhancing ? "#666" : "#c084fc",
+                  fontWeight: 700, fontSize: 13, cursor: isEnhancing ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}>
+                {isEnhancing
+                  ? <><Loader2 size={14} style={{animation:"spin 1s linear infinite"}} /> Enhancing with Qwen 3.5...</>
+                  : <><Sparkles size={14} /> ✨ AI Enhance Prompt</>
+                }
+              </button>
+              {enhanceError && <p style={{color:"#f87171",fontSize:12,marginTop:6,margin:0}}>{enhanceError}</p>}
+
+              {/* Enhanced prompt textarea */}
+              {enhancedPrompt && (
+                <div style={{marginTop:12}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:11,color:"#a855f7",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6}}>✨ Enhanced Prompt</span>
+                    <button onClick={() => { navigator.clipboard.writeText(enhancedPrompt); setCopiedEnhanced(true); setTimeout(()=>setCopiedEnhanced(false),2000); }}
+                      style={{background:"none",border:"none",cursor:"pointer",color:"#555",fontSize:11,fontWeight:600}}>
+                      {copiedEnhanced ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={enhancedPrompt}
+                    onChange={e => setEnhancedPrompt(e.target.value)}
+                    rows={5}
+                    style={{
+                      width:"100%", background:"#0d0d0d",
+                      border:"1px solid rgba(139,92,246,0.3)", borderRadius:8,
+                      padding:"10px", color:"#d4b8ff", fontSize:12, lineHeight:1.6,
+                      resize:"vertical", boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Aspect Ratio */}
+              <div style={{marginTop:14}}>
+                <span style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,display:"block",marginBottom:6}}>Aspect Ratio</span>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {DETAIL_RATIOS.map(r=>(
+                    <button key={r} onClick={()=>setDetailRatio(r)}
+                      style={{padding:"4px 8px",borderRadius:5,fontSize:12,cursor:"pointer",
+                        background:detailRatio===r?"rgba(139,92,246,0.25)":"#1a1a1a",
+                        border:detailRatio===r?"1px solid rgba(139,92,246,0.5)":"1px solid #2a2a2a",
+                        color:detailRatio===r?"#c084fc":"#666"}}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resolution */}
+              <div style={{marginTop:10}}>
+                <span style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,display:"block",marginBottom:6}}>Resolution</span>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {DETAIL_RES.map(r=>(
+                    <button key={r} onClick={()=>setDetailRes(r)}
+                      style={{padding:"4px 8px",borderRadius:5,fontSize:12,cursor:"pointer",
+                        background:detailRes===r?"rgba(139,92,246,0.25)":"#1a1a1a",
+                        border:detailRes===r?"1px solid rgba(139,92,246,0.5)":"1px solid #2a2a2a",
+                        color:detailRes===r?"#c084fc":"#666"}}>
+                      {r}px
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Enhance Prompt */}
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #1a1a1a" }}>
+              <button
+                onClick={() => handleEnhancePrompt(selectedImg.prompt)}
+                disabled={isEnhancing}
+                style={{
+                  width: "100%", padding: "10px", borderRadius: 8,
+                  background: isEnhancing ? "rgba(139,92,246,0.08)" : "linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.18))",
+                  border: "1px solid rgba(139,92,246,0.35)",
+                  color: isEnhancing ? "#666" : "#c084fc",
+                  fontWeight: 700, fontSize: 14, cursor: isEnhancing ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  marginBottom: 8,
+                }}
+              >
+                {isEnhancing
+                  ? <><Loader2 size={14} style={{animation:"spin 1s linear infinite"}} /> Enhancing with Qwen 3.5...</>
+                  : <><Sparkles size={14} /> ✨ AI Enhance Prompt</>
+                }
+              </button>
+              {enhanceError && <p style={{color:"#f87171",fontSize:12,margin:"4px 0 0"}}>{enhanceError}</p>}
+              {enhancedPrompt && (
+                <div style={{marginTop:8}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:11,color:"#a855f7",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6}}>✨ Enhanced</span>
+                    <button onClick={() => {navigator.clipboard.writeText(enhancedPrompt); setCopiedEnhanced(true); setTimeout(()=>setCopiedEnhanced(false),2000);}}
+                      style={{fontSize:11,color:copiedEnhanced?"#00c853":"#666",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>
+                      {copiedEnhanced ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={enhancedPrompt}
+                    onChange={e => setEnhancedPrompt(e.target.value)}
+                    rows={5}
+                    style={{
+                      width:"100%", background:"#0d0d0d",
+                      border:"1px solid rgba(139,92,246,0.3)", borderRadius:8,
+                      padding:"10px", color:"#d4b8ff", fontSize:12, lineHeight:1.65,
+                      resize:"vertical", boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                  <button
+                    onClick={() => { setPrompt(enhancedPrompt); setSelectedIdx(null); setFloatingExpanded(true); }}
+                    style={{
+                      width:"100%", marginTop:8, padding:"10px", borderRadius:8,
+                      background:"linear-gradient(135deg,#7c3aed,#db2777)",
+                      border:"none", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer",
+                      display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                    }}
+                  >
+                    <Sparkles size={13} /> Use enhanced prompt
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Aspect Ratio & Resolution */}
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #1a1a1a" }}>
+              <p style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,margin:"0 0 8px"}}>Aspect Ratio</p>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+                {["1:1","4:3","3:4","16:9","9:16","3:2","2:3"].map(r => (
+                  <button key={r} onClick={() => setDetailRatio(r)} style={{
+                    padding:"4px 10px", borderRadius:6, fontSize:12, cursor:"pointer",
+                    background: detailRatio===r ? "rgba(139,92,246,0.25)" : "#1a1a1a",
+                    border: detailRatio===r ? "1px solid rgba(139,92,246,0.5)" : "1px solid #2a2a2a",
+                    color: detailRatio===r ? "#c084fc" : "#666",
+                  }}>{r}</button>
+                ))}
+              </div>
+              <p style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,margin:"0 0 8px"}}>Resolution</p>
+              <div style={{display:"flex",gap:6}}>
+                {[["768","HD"],["1024","Full HD"],["1280","2K"]].map(([v,l]) => (
+                  <button key={v} onClick={() => setDetailRes(v)} style={{
+                    padding:"4px 10px", borderRadius:6, fontSize:12, cursor:"pointer",
+                    background: detailRes===v ? "rgba(139,92,246,0.25)" : "#1a1a1a",
+                    border: detailRes===v ? "1px solid rgba(139,92,246,0.5)" : "1px solid #2a2a2a",
+                    color: detailRes===v ? "#c084fc" : "#666",
+                  }}>{l}</button>
+                ))}
+              </div>
             </div>
 
             {/* Like */}
