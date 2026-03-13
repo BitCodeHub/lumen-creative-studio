@@ -1,52 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const NEMOTRON_URL = 'https://lumen-nemotron.ngrok.app/v1';
 const OLLAMA_URL = 'https://lumen-ollama.ngrok.app';
 
 const ENHANCE_SYSTEM = `You are an expert AI image prompt engineer. Transform basic prompts into highly detailed, photorealistic image generation prompts. Add camera specs, lighting, technical quality tags, atmosphere. Return ONLY the enhanced prompt, no explanations.`;
 
-async function enhanceWithNemotron(prompt: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${NEMOTRON_URL}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'nemotron-3-super',
-        messages: [
-          { role: 'system', content: ENHANCE_SYSTEM },
-          { role: 'user', content: `Enhance this image prompt: "${prompt}"` }
-        ],
-        max_tokens: 400,
-        temperature: 1.0,
-        top_p: 0.95,
-      }),
-      signal: AbortSignal.timeout(45000)
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    let enhanced = (data.choices?.[0]?.message?.content || '') as string;
-    enhanced = enhanced.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-    return enhanced || null;
-  } catch {
-    return null;
-  }
-}
-
-async function enhanceWithOllama(prompt: string): Promise<string | null> {
+async function enhanceWithModel(prompt: string, model: string, timeoutMs: number): Promise<string | null> {
   try {
     const res = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3.3:70b',
+        model,
         messages: [
           { role: 'system', content: ENHANCE_SYSTEM },
           { role: 'user', content: `Enhance this image prompt: "${prompt}"` }
         ],
         stream: false,
+        think: false,
         options: { num_predict: 400, temperature: 0.7 }
       }),
-      signal: AbortSignal.timeout(60000)
+      signal: AbortSignal.timeout(timeoutMs)
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -63,10 +36,13 @@ export async function POST(request: NextRequest) {
     const { prompt } = await request.json();
     if (!prompt) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    let enhanced = await enhanceWithNemotron(prompt);
+    // Primary: Qwen 3.5 122B (best quality, ~20s)
+    let enhanced = await enhanceWithModel(prompt, 'qwen3.5:122b', 60000);
+    
+    // Fallback: Llama 3.3 70B (~26s)
     if (!enhanced) {
-      console.log('[Enhance] Nemotron unavailable, using Llama 3.3 70B fallback');
-      enhanced = await enhanceWithOllama(prompt);
+      console.log('[Enhance] Qwen 3.5 unavailable, using Llama 3.3 70B fallback');
+      enhanced = await enhanceWithModel(prompt, 'llama3.3:70b', 60000);
     }
 
     if (!enhanced) return NextResponse.json({ error: 'Enhancement failed' }, { status: 500 });
