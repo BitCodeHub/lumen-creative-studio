@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const GALLERY_BASE = 'https://lumen-gallery.ngrok.app';
+const CF_IMAGE_BASE = 'https://lumen-gallery.lumenai.workers.dev';
+
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
         ...img,
         id: filename,
         filename,
-        imageUrl: `/api/gallery/image?file=${encodeURIComponent(filename)}`,
+        imageUrl: `${CF_IMAGE_BASE}/${encodeURIComponent(filename)}`,
         prompt: img.prompt || labelFromId(filename),
         model: img.model || 'Lumen AI',
       };
