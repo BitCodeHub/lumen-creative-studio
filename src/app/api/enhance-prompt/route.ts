@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const OLLAMA_URL = 'https://lumen-ollama.ngrok.app';
 
-const ENHANCE_SYSTEM = `You are an expert AI image prompt engineer. Transform basic prompts into highly detailed, photorealistic image generation prompts. Add camera specs, lighting, technical quality tags, atmosphere. Return ONLY the enhanced prompt, no explanations.`;
+const ENHANCE_SYSTEM = `You are an expert AI image prompt engineer. Transform basic prompts into highly detailed, photorealistic image generation prompts. Add camera specs, lighting, and technical quality tags. Return ONLY the enhanced prompt in one paragraph, no explanations, max 120 words.`;
 
 async function enhanceWithModel(prompt: string, model: string, timeoutMs: number): Promise<string | null> {
   try {
@@ -13,11 +13,11 @@ async function enhanceWithModel(prompt: string, model: string, timeoutMs: number
         model,
         messages: [
           { role: 'system', content: ENHANCE_SYSTEM },
-          { role: 'user', content: `Enhance this image prompt: "${prompt}"` }
+          { role: 'user', content: `Enhance this image prompt (max 120 words): "${prompt}"` }
         ],
         stream: false,
         think: false,
-        options: { num_predict: 400, temperature: 0.7 }
+        options: { num_predict: 200, temperature: 0.7 }
       }),
       signal: AbortSignal.timeout(timeoutMs)
     });
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
     const { prompt } = await request.json();
     if (!prompt) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    // Primary: Llama 3.3 70B (stable, ~26s)
-    let enhanced = await enhanceWithModel(prompt, 'llama3.3:70b', 60000);
+    // Primary: Llama 3.3 70B (stable, ~30s with 200 tokens)
+    let enhanced = await enhanceWithModel(prompt, 'llama3.3:70b', 55000);
 
     if (!enhanced) return NextResponse.json({ error: 'Enhancement failed' }, { status: 500 });
     return NextResponse.json({ enhanced });
