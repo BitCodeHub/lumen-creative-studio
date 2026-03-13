@@ -36,14 +36,8 @@ export async function POST(request: NextRequest) {
     const { prompt } = await request.json();
     if (!prompt) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    // Primary: Qwen 3.5 122B (best quality, ~20s)
-    let enhanced = await enhanceWithModel(prompt, 'qwen3.5:122b', 60000);
-    
-    // Fallback: Llama 3.3 70B (~26s)
-    if (!enhanced) {
-      console.log('[Enhance] Qwen 3.5 unavailable, using Llama 3.3 70B fallback');
-      enhanced = await enhanceWithModel(prompt, 'llama3.3:70b', 60000);
-    }
+    // Primary: Llama 3.3 70B (stable, ~26s)
+    let enhanced = await enhanceWithModel(prompt, 'llama3.3:70b', 60000);
 
     if (!enhanced) return NextResponse.json({ error: 'Enhancement failed' }, { status: 500 });
     return NextResponse.json({ enhanced });
