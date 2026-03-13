@@ -1163,6 +1163,29 @@ export default function HomePage() {
                     style={{width:"100%",background:"#0d0d0d",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,
                       padding:10,color:"#d4b8ff",fontSize:12,lineHeight:1.6,resize:"vertical",
                       boxSizing:"border-box",fontFamily:"inherit"}} />
+                  {/* Use Enhanced Prompt buttons */}
+                  <div style={{display:"flex",gap:8,marginTop:10}}>
+                    <button
+                      onClick={() => { setPrompt(enhancedPrompt); setSelectedIdx(null); setFloatingExpanded(true); }}
+                      style={{
+                        flex:1, padding:"9px 12px", borderRadius:8,
+                        background:"linear-gradient(135deg,#7c3aed,#db2777)",
+                        border:"none", color:"#fff", fontWeight:700, fontSize:13,
+                        cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                      }}>
+                      <Sparkles size={13} /> Use & Generate
+                    </button>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(enhancedPrompt)}
+                      style={{
+                        padding:"9px 12px", borderRadius:8,
+                        background:"#1a1a1a", border:"1px solid #2a2a2a",
+                        color:"#888", fontSize:13, cursor:"pointer",
+                        display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                      }}>
+                      <Copy size={13} /> Copy
+                    </button>
+                  </div>
                 </div>
               )}
 
