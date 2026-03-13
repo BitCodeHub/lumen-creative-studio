@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Sparkles, Copy, Heart, Download, Loader2, Check } from "lucide-react";
+import ImageDetailModal from "./ImageDetailModal";
 
 interface GalleryImage {
   id: string;
@@ -23,6 +24,7 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -113,6 +115,8 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
   }
 
   return (
+    <>
+    {selectedImage && <ImageDetailModal image={selectedImage} onClose={() => setSelectedImage(null)} />}
     <div style={{ width: "100%" }}>
       {/* Gallery Header */}
       <div style={{ 
@@ -139,7 +143,7 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
       {/* Masonry Grid */}
       <div className="gallery-masonry">
         {images.map((image) => (
-          <div key={image.id} className="gallery-card">
+          <div key={image.id} className="gallery-card" style={{ cursor: "pointer" }} onClick={() => setSelectedImage(image)}>
             {/* Image */}
             <div style={{ position: "relative", overflow: "hidden" }}>
               <img
@@ -319,5 +323,6 @@ export default function GalleryWall({ onRemix }: GalleryWallProps) {
         </p>
       )}
     </div>
+    </>
   );
 }
