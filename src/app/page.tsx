@@ -205,12 +205,18 @@ export default function HomePage() {
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<"trends" | "shorts">("trends");
 
-  // Assets state
-  const [assets, setAssets] = useState<AssetItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem("lumen_assets") || "[]"); } catch { return []; }
-  });
+  // Assets state — loaded from localStorage after mount (SSR-safe)
+  const [assets, setAssets] = useState<AssetItem[]>([]);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [savedToAssets, setSavedToAssets] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lumen_assets");
+      if (stored) setAssets(JSON.parse(stored));
+    } catch {}
+    setAssetsLoaded(true);
+  }, []);
 
   const saveImageToAssets = (img: GalleryImage) => {
     const existing = assets.find(a => a.imageUrl === img.imageUrl);
