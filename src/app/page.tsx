@@ -380,7 +380,7 @@ export default function HomePage() {
   const DETAIL_RATIOS = ["1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
   const DETAIL_RES = ["768","1024","1280"];
   const OLLAMA_URL = "https://lumen-ollama-proxy.lumenai.workers.dev";
-  const ENHANCE_SYSTEM = "You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs (Canon 5D, 85mm f/1.4), lighting (golden hour, studio softbox), and quality tags. Return ONLY the enhanced prompt in one paragraph, max 80 words.";
+  const ENHANCE_SYSTEM = "You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs (Canon 5D, 85mm f/1.4), lighting (golden hour, studio softbox), and quality tags. Return ONLY the enhanced prompt in one paragraph, up to 200 words.";
 
   const handleEnhancePrompt = async (promptText: string) => {
     if (!promptText || isEnhancing) return;
@@ -394,10 +394,10 @@ export default function HomePage() {
           model: "llama3.3:70b",
           messages: [
             { role: "system", content: ENHANCE_SYSTEM },
-            { role: "user", content: `Enhance this image prompt (max 80 words): "${promptText}"` }
+            { role: "user", content: `Enhance this image prompt: "${promptText}"` }
           ],
           stream: true, think: false,
-          options: { num_predict: 150, temperature: 0.7 }
+          options: { num_predict: 400, temperature: 0.7 }
         }),
       });
       if (!res.ok || !res.body) { setEnhanceError("Enhancement failed."); return; }
@@ -531,8 +531,10 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", handler);
   }, [selectedIdx, images.length]);
 
-  const generate = async () => {
-    if (!prompt.trim()) return;
+  const generate = async (overridePrompt?: string) => {
+    const activePrompt = overridePrompt !== undefined ? overridePrompt : prompt;
+    if (!activePrompt.trim()) return;
+    if (overridePrompt !== undefined) setPrompt(overridePrompt);
     setIsGenerating(true);
     setError("");
     setGeneratedImage(null);
@@ -545,19 +547,19 @@ export default function HomePage() {
       if (refImage) {
         const fd = new FormData();
         fd.append("refImage", refImage);
-        fd.append("prompt", prompt);
+        fd.append("prompt", activePrompt);
         fd.append("model", model);
         fd.append("width", String(imgW));
         fd.append("height", String(imgH));
         fd.append("mode", refImageMode);
         // Use Gemini (Nano Banana 2.0) when user provides reference image + text prompt
-        if (prompt.trim()) fd.append("useGemini", "true");
+        if (activePrompt.trim()) fd.append("useGemini", "true");
         res = await fetch("/api/generate/ref", { method: "POST", body: fd });
       } else {
         res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, model, width: imgW, height: imgH, upscale4k: RES_TIERS[resolution].upscale4k }),
+          body: JSON.stringify({ prompt: activePrompt, model, width: imgW, height: imgH, upscale4k: RES_TIERS[resolution].upscale4k }),
         });
       }
       const data = await res.json();
@@ -1278,7 +1280,7 @@ export default function HomePage() {
                       boxSizing:"border-box",fontFamily:"inherit"}} />
                   <div style={{display:"flex",gap:0,borderTop:"1px solid #1a1a1a"}}>
                     <button
-                      onClick={() => { setPrompt(enhancedPrompt); setSelectedIdx(null); setFloatingExpanded(true); }}
+                      onClick={() => { setSelectedIdx(null); setFloatingExpanded(false); generate(enhancedPrompt); }}
                       style={{
                         flex:1, padding:"9px 12px",
                         background:"#0066ff", border:"none",
