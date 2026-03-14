@@ -232,10 +232,13 @@ export default function HomePage() {
 
   const savePromptToAssets = (promptText: string) => {
     if (!promptText.trim()) return;
+    // Dedup: skip if exact same prompt already saved
+    const norm = promptText.trim().toLowerCase();
+    if (assets.find(a => a.prompt.trim().toLowerCase() === norm)) return;
     const newAsset: AssetItem = {
       id: "asset_" + Date.now(),
       type: "prompt",
-      prompt: promptText,
+      prompt: promptText.trim(),
       savedAt: Date.now(),
     };
     const updated = [newAsset, ...assets];
@@ -1071,7 +1074,11 @@ export default function HomePage() {
                           }}>
                           <Download size={12} /> Download
                         </a>
-                        <button onClick={() => { const a: AssetItem = { id: "asset_"+Date.now(), type: "image", imageUrl: generatedImage!, prompt, savedAt: Date.now(), model }; const u=[a,...assets]; setAssets(u); localStorage.setItem("lumen_assets",JSON.stringify(u)); }}
+                        <button onClick={() => { 
+                          const norm = prompt.trim().toLowerCase();
+                          const dup = assets.find(a => a.imageUrl === generatedImage || (a.prompt.trim().toLowerCase() === norm && a.type === "image"));
+                          if (!dup) { const a: AssetItem = { id: "asset_"+Date.now(), type: "image", imageUrl: generatedImage!, prompt: prompt.trim(), savedAt: Date.now(), model }; const u=[a,...assets]; setAssets(u); localStorage.setItem("lumen_assets",JSON.stringify(u)); }
+                        }}
                           style={{
                             display: "flex", alignItems: "center", gap: 5, padding: "7px 14px",
                             background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
@@ -1333,7 +1340,16 @@ export default function HomePage() {
                   color={liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa"} />
                 {liked.has(selectedImg.id) ? "Liked" : "Like"}
               </button>
-              <button onClick={() => saveImageToAssets(selectedImg)}
+              <button onClick={() => {
+                  // Save image + whichever prompt is active (enhanced > original)
+                  const promptToSave = enhancedPrompt || selectedImg.prompt;
+                  const imgWithPrompt = { ...selectedImg, prompt: promptToSave };
+                  saveImageToAssets(imgWithPrompt);
+                  // Also save the prompt text as a standalone asset if enhanced
+                  if (enhancedPrompt && enhancedPrompt !== selectedImg.prompt) {
+                    savePromptToAssets(enhancedPrompt);
+                  }
+                }}
                 style={{
                   flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 14px",
                   borderRadius: 8, border: savedToAssets.has(selectedImg.id) ? "1px solid rgba(77,159,255,0.4)" : "1px solid #2a2a2a",
@@ -1342,20 +1358,32 @@ export default function HomePage() {
                 }}>
                 {savedToAssets.has(selectedImg.id)
                   ? <><BookmarkCheck size={14} /> Saved!</>
-                  : <><Bookmark size={14} /> Save to Assets</>}
+                  : <><Bookmark size={14} /> {enhancedPrompt ? "Save + Enhanced" : "Save to Assets"}</>}
               </button>
             </div>
             {/* Save prompt to assets */}
-            {selectedImg.prompt && (
-              <div style={{ padding: "0 20px 16px" }}>
-                <button onClick={() => savePromptToAssets(selectedImg.prompt)}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    padding: "7px", borderRadius: 8, border: "1px solid #1e1e1e", background: "transparent",
-                    color: "#555", fontSize: 12, cursor: "pointer",
-                  }}>
-                  <FileText size={12} /> Save prompt only
-                </button>
+            {(selectedImg.prompt || enhancedPrompt) && (
+              <div style={{ padding: "0 20px 16px", display: "flex", gap: 6 }}>
+                {selectedImg.prompt && (
+                  <button onClick={() => savePromptToAssets(selectedImg.prompt)}
+                    style={{
+                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "7px", borderRadius: 8, border: "1px solid #1e1e1e", background: "transparent",
+                      color: "#555", fontSize: 12, cursor: "pointer",
+                    }}>
+                    <FileText size={12} /> Save original
+                  </button>
+                )}
+                {enhancedPrompt && (
+                  <button onClick={() => savePromptToAssets(enhancedPrompt)}
+                    style={{
+                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "7px", borderRadius: 8, border: "1px solid rgba(139,92,246,0.25)", background: "transparent",
+                      color: "#a855f7", fontSize: 12, cursor: "pointer",
+                    }}>
+                    <Sparkles size={12} /> Save enhanced
+                  </button>
+                )}
               </div>
             )}
           </div>
