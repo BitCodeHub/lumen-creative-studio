@@ -91,7 +91,7 @@ function createRealVisWorkflow(prompt: string, seed?: number) {
     "2": { "class_type": "CLIPTextEncode", "inputs": { "text": enhancedPrompt, "clip": ["1", 1] } },
     "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, deformed eyes, bad teeth, extra teeth, fused fingers, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, ugly, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, out of frame, watermark, signature, text, jpeg artifacts, low quality, worst quality, painting, illustration, cartoon, anime, drawing, sketch, 3d render, cgi", "clip": ["1", 1] } },
     "4": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
-    "5": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": actualSeed, "steps": 20, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1.0 } },
+    "5": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": actualSeed, "steps": 12, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1.0 } },
     "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
     "7": { "class_type": "SaveImage", "inputs": { "images": ["6", 0], "filename_prefix": "lumen_realvis" } },
   } as Record<string, any>;
@@ -105,7 +105,7 @@ function createSDXLWorkflow(prompt: string, seed?: number) {
     "2": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt, "clip": ["1", 1] } },
     "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, deformed eyes, bad teeth, extra teeth, fused fingers, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, ugly, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, out of frame, watermark, signature, text, jpeg artifacts, low quality, worst quality", "clip": ["1", 1] } },
     "4": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
-    "5": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": actualSeed, "steps": 20, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1.0 } },
+    "5": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": actualSeed, "steps": 12, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1.0 } },
     "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
     "7": { "class_type": "SaveImage", "inputs": { "images": ["6", 0], "filename_prefix": "lumen_sdxl" } },
   } as Record<string, any>;
