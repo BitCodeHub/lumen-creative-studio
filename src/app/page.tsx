@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Compass, Diamond, Archive, ChevronDown,
   Loader2, Download, Heart, Copy, Check, Sparkles,
-  Image as ImageIcon, Plus, Wand2, ChevronLeft, ChevronRight, X, Lock, Unlock
+  Image as ImageIcon, Plus, Wand2, ChevronLeft, ChevronRight, X, Lock, Unlock,
+  Bookmark, BookmarkCheck, Trash2, FileText
 } from "lucide-react";
 
 interface GalleryImage {
@@ -12,6 +13,15 @@ interface GalleryImage {
   imageUrl: string;
   prompt: string;
   model: string;
+}
+
+interface AssetItem {
+  id: string;
+  type: "image" | "prompt";
+  imageUrl?: string;
+  prompt: string;
+  savedAt: number;
+  model?: string;
 }
 
 const MODELS = [
@@ -180,7 +190,7 @@ function MasonryGrid({
 }
 
 export default function HomePage() {
-  const [activeNav, setActiveNav] = useState<"explore" | "create">("explore");
+  const [activeNav, setActiveNav] = useState<"explore" | "create" | "assets">("explore");
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("realvis");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -194,6 +204,50 @@ export default function HomePage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<"trends" | "shorts">("trends");
+
+  // Assets state
+  const [assets, setAssets] = useState<AssetItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("lumen_assets") || "[]"); } catch { return []; }
+  });
+  const [savedToAssets, setSavedToAssets] = useState<Set<string>>(new Set());
+
+  const saveImageToAssets = (img: GalleryImage) => {
+    const existing = assets.find(a => a.imageUrl === img.imageUrl);
+    if (existing) return; // already saved
+    const newAsset: AssetItem = {
+      id: "asset_" + Date.now(),
+      type: "image",
+      imageUrl: img.imageUrl,
+      prompt: img.prompt,
+      savedAt: Date.now(),
+      model: img.model,
+    };
+    const updated = [newAsset, ...assets];
+    setAssets(updated);
+    localStorage.setItem("lumen_assets", JSON.stringify(updated));
+    setSavedToAssets(prev => new Set([...prev, img.id]));
+    setTimeout(() => setSavedToAssets(prev => { const n = new Set(prev); n.delete(img.id); return n; }), 2000);
+  };
+
+  const savePromptToAssets = (promptText: string) => {
+    if (!promptText.trim()) return;
+    const newAsset: AssetItem = {
+      id: "asset_" + Date.now(),
+      type: "prompt",
+      prompt: promptText,
+      savedAt: Date.now(),
+    };
+    const updated = [newAsset, ...assets];
+    setAssets(updated);
+    localStorage.setItem("lumen_assets", JSON.stringify(updated));
+  };
+
+  const removeAsset = (id: string) => {
+    const updated = assets.filter(a => a.id !== id);
+    setAssets(updated);
+    localStorage.setItem("lumen_assets", JSON.stringify(updated));
+  };
 
   // Aspect ratio / resolution / size state
   const [arPanelOpen, setArPanelOpen] = useState(false);
@@ -593,13 +647,22 @@ export default function HomePage() {
             </button>
           );
         })}
-        <button title="Assets" style={{
+        <button onClick={() => setActiveNav("assets")} title="Assets" style={{
           width: 52, height: 52, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center", gap: 3,
-          border: "none", borderRadius: 10, background: "transparent", cursor: "pointer", color: "#444"
+          border: "none", borderRadius: 10,
+          background: activeNav === "assets" ? "rgba(0,102,255,0.15)" : "transparent",
+          cursor: "pointer", color: activeNav === "assets" ? "#4d9fff" : "#444"
         }}>
           <Archive size={19} />
           <span style={{ fontSize: 9.5, fontWeight: 500 }}>Assets</span>
+          {assets.length > 0 && (
+            <span style={{ position: "absolute", top: 8, right: 8, width: 14, height: 14,
+              borderRadius: "50%", background: "#0066ff", fontSize: 8, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+              {assets.length > 99 ? "99+" : assets.length}
+            </span>
+          )}
         </button>
         <a href="/headshots" title="AI Headshots" style={{
           width: 52, height: 52, display: "flex", flexDirection: "column",
@@ -1008,6 +1071,15 @@ export default function HomePage() {
                           }}>
                           <Download size={12} /> Download
                         </a>
+                        <button onClick={() => { const a: AssetItem = { id: "asset_"+Date.now(), type: "image", imageUrl: generatedImage!, prompt, savedAt: Date.now(), model }; const u=[a,...assets]; setAssets(u); localStorage.setItem("lumen_assets",JSON.stringify(u)); }}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 5, padding: "7px 14px",
+                            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                            border: "1px solid rgba(77,159,255,0.3)", borderRadius: 8,
+                            color: "#4d9fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                          }}>
+                          <Bookmark size={12} /> Save
+                        </button>
                         <button onClick={() => setGeneratedImage(null)}
                           style={{
                             padding: "7px 12px",
@@ -1249,11 +1321,11 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Like */}
-            <div style={{ padding: "16px 20px", borderTop: "1px solid #1a1a1a" }}>
+            {/* Like + Save */}
+            <div style={{ padding: "16px 20px", borderTop: "1px solid #1a1a1a", display: "flex", gap: 8 }}>
               <button onClick={() => toggleLike(selectedImg.id)}
                 style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 14px",
                   borderRadius: 8, border: "1px solid #2a2a2a", background: "#161616",
                   color: liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa", fontSize: 13, cursor: "pointer",
                 }}>
@@ -1261,7 +1333,194 @@ export default function HomePage() {
                   color={liked.has(selectedImg.id) ? "#ff6b6b" : "#aaa"} />
                 {liked.has(selectedImg.id) ? "Liked" : "Like"}
               </button>
+              <button onClick={() => saveImageToAssets(selectedImg)}
+                style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 14px",
+                  borderRadius: 8, border: savedToAssets.has(selectedImg.id) ? "1px solid rgba(77,159,255,0.4)" : "1px solid #2a2a2a",
+                  background: savedToAssets.has(selectedImg.id) ? "rgba(77,159,255,0.1)" : "#161616",
+                  color: savedToAssets.has(selectedImg.id) ? "#4d9fff" : "#aaa", fontSize: 13, cursor: "pointer",
+                }}>
+                {savedToAssets.has(selectedImg.id)
+                  ? <><BookmarkCheck size={14} /> Saved!</>
+                  : <><Bookmark size={14} /> Save to Assets</>}
+              </button>
             </div>
+            {/* Save prompt to assets */}
+            {selectedImg.prompt && (
+              <div style={{ padding: "0 20px 16px" }}>
+                <button onClick={() => savePromptToAssets(selectedImg.prompt)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    padding: "7px", borderRadius: 8, border: "1px solid #1e1e1e", background: "transparent",
+                    color: "#555", fontSize: 12, cursor: "pointer",
+                  }}>
+                  <FileText size={12} /> Save prompt only
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== ASSETS VIEW ===== */}
+      {activeNav === "assets" && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 150,
+          background: "#0a0a0a",
+          marginLeft: 64,
+          overflowY: "auto",
+          padding: "32px 32px 120px",
+        }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>My Assets</h2>
+                <p style={{ fontSize: 13, color: "#555", margin: 0 }}>Saved images and prompts — {assets.length} item{assets.length !== 1 ? "s" : ""}</p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => savePromptToAssets(prompt)}
+                  disabled={!prompt.trim()}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+                    borderRadius: 8, border: "1px solid #2a2a2a",
+                    background: prompt.trim() ? "#161616" : "transparent",
+                    color: prompt.trim() ? "#aaa" : "#333", fontSize: 13, cursor: prompt.trim() ? "pointer" : "not-allowed",
+                  }}>
+                  <FileText size={13} /> Save current prompt
+                </button>
+                <button onClick={() => setActiveNav("explore")}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+                    borderRadius: 8, border: "none", background: "#0066ff",
+                    color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  }}>
+                  <Compass size={13} /> Explore Gallery
+                </button>
+              </div>
+            </div>
+
+            {assets.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "80px 0", color: "#444" }}>
+                <Archive size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
+                <p style={{ fontSize: 16, marginBottom: 8 }}>No assets saved yet</p>
+                <p style={{ fontSize: 13 }}>Browse the gallery and click "Save to Assets" on any image or prompt</p>
+              </div>
+            ) : (
+              <div>
+                {/* Image assets */}
+                {assets.filter(a => a.type === "image").length > 0 && (
+                  <div style={{ marginBottom: 40 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 16 }}>
+                      Saved Images ({assets.filter(a => a.type === "image").length})
+                    </h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
+                      {assets.filter(a => a.type === "image").map(asset => (
+                        <div key={asset.id} style={{ background: "#111", borderRadius: 12, overflow: "hidden", border: "1px solid #1e1e1e" }}>
+                          <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden" }}>
+                            <img src={asset.imageUrl} alt={asset.prompt?.slice(0, 40)}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <div style={{
+                              position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)",
+                              opacity: 0, transition: "opacity 0.2s",
+                            }}
+                              onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                              onMouseLeave={e => (e.currentTarget.style.opacity = "0")}>
+                              <div style={{ position: "absolute", bottom: 10, left: 10, right: 10, display: "flex", gap: 6 }}>
+                                <a href={asset.imageUrl} download="asset.jpg"
+                                  style={{
+                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                                    padding: "6px", borderRadius: 6, background: "rgba(0,0,0,0.7)",
+                                    color: "#fff", fontSize: 11, textDecoration: "none", fontWeight: 600,
+                                  }}>
+                                  <Download size={11} /> Download
+                                </a>
+                                <button onClick={() => { setPrompt(asset.prompt); setActiveNav("explore"); setFloatingExpanded(true); }}
+                                  style={{
+                                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                                    padding: "6px", borderRadius: 6, background: "rgba(0,102,255,0.8)",
+                                    color: "#fff", fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer",
+                                  }}>
+                                  <Sparkles size={11} /> Use prompt
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ padding: "10px 12px 12px" }}>
+                            <p style={{ fontSize: 11, color: "#888", margin: "0 0 8px", lineHeight: 1.5,
+                              overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                              {asset.prompt || "No prompt"}
+                            </p>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => navigator.clipboard.writeText(asset.prompt)}
+                                style={{
+                                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                                  padding: "5px", borderRadius: 6, border: "1px solid #2a2a2a", background: "#0a0a0a",
+                                  color: "#555", fontSize: 11, cursor: "pointer",
+                                }}>
+                                <Copy size={10} /> Copy
+                              </button>
+                              <button onClick={() => removeAsset(asset.id)}
+                                style={{
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  padding: "5px 8px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.2)",
+                                  background: "transparent", color: "#f87171", fontSize: 11, cursor: "pointer",
+                                }}>
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Prompt assets */}
+                {assets.filter(a => a.type === "prompt").length > 0 && (
+                  <div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 16 }}>
+                      Saved Prompts ({assets.filter(a => a.type === "prompt").length})
+                    </h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
+                      {assets.filter(a => a.type === "prompt").map(asset => (
+                        <div key={asset.id} style={{ background: "#111", borderRadius: 12, padding: "16px", border: "1px solid #1e1e1e", display: "flex", flexDirection: "column", gap: 10 }}>
+                          <p style={{ fontSize: 13, color: "#ccc", margin: 0, lineHeight: 1.7, flex: 1, userSelect: "text" }}>
+                            {asset.prompt}
+                          </p>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => { setPrompt(asset.prompt); setActiveNav("explore"); setFloatingExpanded(true); }}
+                              style={{
+                                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                padding: "7px", borderRadius: 7, border: "none", background: "#0066ff",
+                                color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                              }}>
+                              <Sparkles size={12} /> Use
+                            </button>
+                            <button onClick={() => navigator.clipboard.writeText(asset.prompt)}
+                              style={{
+                                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                padding: "7px", borderRadius: 7, border: "1px solid #2a2a2a", background: "#0a0a0a",
+                                color: "#888", fontSize: 12, cursor: "pointer",
+                              }}>
+                              <Copy size={12} /> Copy
+                            </button>
+                            <button onClick={() => removeAsset(asset.id)}
+                              style={{
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                padding: "7px 10px", borderRadius: 7, border: "1px solid rgba(239,68,68,0.2)",
+                                background: "transparent", color: "#f87171", fontSize: 12, cursor: "pointer",
+                              }}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
