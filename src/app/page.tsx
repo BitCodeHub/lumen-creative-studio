@@ -316,7 +316,7 @@ export default function HomePage() {
   const [detailRes, setDetailRes] = useState("1024");
   const DETAIL_RATIOS = ["1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
   const DETAIL_RES = ["768","1024","1280"];
-  const OLLAMA_URL = "https://lumen-ollama.ngrok.app";
+  const OLLAMA_URL = "https://lumen-ollama-proxy.lumenai.workers.dev";
   const ENHANCE_SYSTEM = "You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs (Canon 5D, 85mm f/1.4), lighting (golden hour, studio softbox), and quality tags. Return ONLY the enhanced prompt in one paragraph, max 80 words.";
 
   const handleEnhancePrompt = async (promptText: string) => {
