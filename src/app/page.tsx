@@ -316,13 +316,26 @@ export default function HomePage() {
   const [detailRes, setDetailRes] = useState("1024");
   const DETAIL_RATIOS = ["1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
   const DETAIL_RES = ["768","1024","1280"];
+  const OLLAMA_URL = "https://lumen-ollama.ngrok.app";
+  const ENHANCE_SYSTEM = "You are an expert AI image prompt engineer. Transform basic prompts into detailed, photorealistic image generation prompts. Add camera specs (Canon 5D, 85mm f/1.4), lighting (golden hour, studio softbox), and quality tags. Return ONLY the enhanced prompt in one paragraph, max 80 words.";
+
   const handleEnhancePrompt = async (promptText: string) => {
     if (!promptText || isEnhancing) return;
     setIsEnhancing(true); setEnhanceError(""); setEnhancedPrompt("");
     try {
-      const res = await fetch("/api/enhance-prompt", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: promptText }),
+      // Call DGX Ollama directly from browser (streaming) — avoids Render 60s timeout
+      const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3.3:70b",
+          messages: [
+            { role: "system", content: ENHANCE_SYSTEM },
+            { role: "user", content: `Enhance this image prompt (max 80 words): "${promptText}"` }
+          ],
+          stream: true, think: false,
+          options: { num_predict: 150, temperature: 0.7 }
+        }),
       });
       if (!res.ok || !res.body) { setEnhanceError("Enhancement failed."); return; }
       const reader = res.body.getReader();
@@ -331,20 +344,17 @@ export default function HomePage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+        const lines = decoder.decode(value, { stream: true }).split("\n").filter(l => l.trim());
         for (const line of lines) {
-          const payload = line.slice(6).trim();
-          if (payload === "[DONE]") continue;
           try {
-            const data = JSON.parse(payload);
-            if (data.t) { accumulated += data.t; setEnhancedPrompt(accumulated); }
-            if (data.error) setEnhanceError("Enhancement failed.");
+            const obj = JSON.parse(line);
+            const token = obj.message?.content || "";
+            if (token) { accumulated += token; setEnhancedPrompt(accumulated); }
           } catch {}
         }
       }
       if (!accumulated) setEnhanceError("Enhancement failed.");
-    } catch { setEnhanceError("Connection error."); }
+    } catch { setEnhanceError("Connection error. Please try again."); }
     finally { setIsEnhancing(false); }
   };
 
