@@ -1243,74 +1243,76 @@ export default function HomePage() {
                 {selectedImg.prompt || "No prompt available"}
               </p>
 
-              {/* ✨ AI Enhance Prompt */}
+              {/* AI Enhance Prompt */}
               <button
                 onClick={() => { setEnhancedPrompt(""); handleEnhancePrompt(selectedImg.prompt); }}
                 disabled={isEnhancing}
                 style={{
-                  width: "100%", marginTop: 14, padding: "10px", borderRadius: 8,
-                  background: isEnhancing ? "rgba(139,92,246,0.06)" : "linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.18))",
-                  border: "1px solid rgba(139,92,246,0.35)",
-                  color: isEnhancing ? "#666" : "#c084fc",
-                  fontWeight: 700, fontSize: 13, cursor: isEnhancing ? "not-allowed" : "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  width: "100%", marginTop: 14, padding: "9px 14px", borderRadius: 7,
+                  background: isEnhancing ? "#141414" : "#161616",
+                  border: isEnhancing ? "1px solid #222" : "1px solid #2a2a2a",
+                  color: isEnhancing ? "#444" : "#888",
+                  fontWeight: 600, fontSize: 12.5, cursor: isEnhancing ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  letterSpacing: 0.1,
                 }}>
                 {isEnhancing
-                  ? <><Loader2 size={14} style={{animation:"spin 1s linear infinite"}} /> Enhancing...</>
-                  : <><Sparkles size={14} /> ✨ AI Enhance Prompt</>
+                  ? <><Loader2 size={13} style={{animation:"spin 1s linear infinite"}} /> Enhancing prompt...</>
+                  : <><Sparkles size={13} color="#4d9fff" /> Enhance Prompt with AI</>
                 }
               </button>
-              {enhanceError && <p style={{color:"#f87171",fontSize:12,marginTop:4}}>{enhanceError}</p>}
+              {enhanceError && <p style={{color:"#f87171",fontSize:12,marginTop:6,margin:"6px 0 0"}}>{enhanceError}</p>}
 
               {enhancedPrompt && (
-                <div style={{marginTop:10}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-                    <span style={{fontSize:11,color:"#a855f7",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>✨ Enhanced</span>
+                <div style={{marginTop:12,background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:8,overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",borderBottom:"1px solid #1a1a1a"}}>
+                    <span style={{fontSize:10.5,color:"#4d9fff",fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>Enhanced</span>
                     <button onClick={() => { navigator.clipboard.writeText(enhancedPrompt); setCopiedEnhanced(true); setTimeout(()=>setCopiedEnhanced(false),2000); }}
-                      style={{background:"none",border:"none",cursor:"pointer",color:copiedEnhanced?"#4dff91":"#555",fontSize:11,fontWeight:600}}>
-                      {copiedEnhanced ? "✓ Copied" : "Copy"}
+                      style={{background:"none",border:"none",cursor:"pointer",color:copiedEnhanced?"#4dff91":"#444",fontSize:11,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                      {copiedEnhanced ? <><Check size={11}/> Copied</> : <><Copy size={11}/> Copy</>}
                     </button>
                   </div>
                   <textarea value={enhancedPrompt} onChange={e=>setEnhancedPrompt(e.target.value)} rows={5}
-                    style={{width:"100%",background:"#0d0d0d",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,
-                      padding:10,color:"#d4b8ff",fontSize:12,lineHeight:1.6,resize:"vertical",
+                    style={{width:"100%",background:"transparent",border:"none",outline:"none",
+                      padding:"10px 12px",color:"#c8c8c8",fontSize:12,lineHeight:1.65,resize:"vertical",
                       boxSizing:"border-box",fontFamily:"inherit"}} />
-                  {/* Use Enhanced Prompt buttons */}
-                  <div style={{display:"flex",gap:8,marginTop:10}}>
+                  <div style={{display:"flex",gap:0,borderTop:"1px solid #1a1a1a"}}>
                     <button
                       onClick={() => { setPrompt(enhancedPrompt); setSelectedIdx(null); setFloatingExpanded(true); }}
                       style={{
-                        flex:1, padding:"9px 12px", borderRadius:8,
-                        background:"linear-gradient(135deg,#7c3aed,#db2777)",
-                        border:"none", color:"#fff", fontWeight:700, fontSize:13,
+                        flex:1, padding:"9px 12px",
+                        background:"#0066ff", border:"none",
+                        color:"#fff", fontWeight:600, fontSize:12.5,
                         cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                        borderBottomLeftRadius:7,
                       }}>
-                      <Sparkles size={13} /> Use & Generate
+                      Use &amp; Generate
                     </button>
                     <button
                       onClick={() => navigator.clipboard.writeText(enhancedPrompt)}
                       style={{
-                        padding:"9px 12px", borderRadius:8,
-                        background:"#1a1a1a", border:"1px solid #2a2a2a",
-                        color:"#888", fontSize:13, cursor:"pointer",
+                        padding:"9px 14px",
+                        background:"#161616", border:"none", borderLeft:"1px solid #1a1a1a",
+                        color:"#666", fontSize:12, cursor:"pointer",
                         display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                        borderBottomRightRadius:7,
                       }}>
-                      <Copy size={13} /> Copy
+                      <Copy size={12} /> Copy
                     </button>
                   </div>
                 </div>
               )}
 
               {/* Aspect Ratio */}
-              <div style={{marginTop:12}}>
-                <span style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,display:"block",marginBottom:5}}>Aspect Ratio</span>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+              <div style={{marginTop:16}}>
+                <span style={{fontSize:10.5,color:"#444",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,display:"block",marginBottom:6}}>Aspect Ratio</span>
+                <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
                   {DETAIL_RATIOS.map(r=>(
                     <button key={r} onClick={()=>setDetailRatio(r)}
-                      style={{padding:"3px 8px",borderRadius:5,fontSize:12,cursor:"pointer",
-                        background:detailRatio===r?"rgba(139,92,246,0.25)":"#1a1a1a",
-                        border:detailRatio===r?"1px solid rgba(139,92,246,0.5)":"1px solid #2a2a2a",
-                        color:detailRatio===r?"#c084fc":"#666"}}>
+                      style={{padding:"4px 9px",borderRadius:5,fontSize:11.5,cursor:"pointer",fontWeight:500,
+                        background:detailRatio===r?"#1a2a40":"transparent",
+                        border:detailRatio===r?"1px solid rgba(77,159,255,0.4)":"1px solid #222",
+                        color:detailRatio===r?"#4d9fff":"#555"}}>
                       {r}
                     </button>
                   ))}
@@ -1318,15 +1320,15 @@ export default function HomePage() {
               </div>
 
               {/* Resolution */}
-              <div style={{marginTop:8}}>
-                <span style={{fontSize:11,color:"#555",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,display:"block",marginBottom:5}}>Resolution</span>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+              <div style={{marginTop:10}}>
+                <span style={{fontSize:10.5,color:"#444",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,display:"block",marginBottom:6}}>Resolution</span>
+                <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
                   {DETAIL_RES.map(r=>(
                     <button key={r} onClick={()=>setDetailRes(r)}
-                      style={{padding:"3px 8px",borderRadius:5,fontSize:12,cursor:"pointer",
-                        background:detailRes===r?"rgba(139,92,246,0.25)":"#1a1a1a",
-                        border:detailRes===r?"1px solid rgba(139,92,246,0.5)":"1px solid #2a2a2a",
-                        color:detailRes===r?"#c084fc":"#666"}}>
+                      style={{padding:"4px 9px",borderRadius:5,fontSize:11.5,cursor:"pointer",fontWeight:500,
+                        background:detailRes===r?"#1a2a40":"transparent",
+                        border:detailRes===r?"1px solid rgba(77,159,255,0.4)":"1px solid #222",
+                        color:detailRes===r?"#4d9fff":"#555"}}>
                       {r}px
                     </button>
                   ))}
@@ -1384,10 +1386,10 @@ export default function HomePage() {
                   <button onClick={() => savePromptToAssets(enhancedPrompt)}
                     style={{
                       flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      padding: "7px", borderRadius: 8, border: "1px solid rgba(139,92,246,0.25)", background: "transparent",
-                      color: "#a855f7", fontSize: 12, cursor: "pointer",
+                      padding: "7px", borderRadius: 7, border: "1px solid rgba(77,159,255,0.25)", background: "transparent",
+                      color: "#4d9fff", fontSize: 12, cursor: "pointer",
                     }}>
-                    <Sparkles size={12} /> Save enhanced
+                    <Sparkles size={12} color="#4d9fff" /> Save enhanced
                   </button>
                 )}
               </div>
