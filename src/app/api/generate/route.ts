@@ -24,6 +24,20 @@ function promptHasTextRequest(prompt: string): boolean {
   return TEXT_IN_IMAGE_KEYWORDS.some(kw => lower.includes(kw));
 }
 
+// NSFW/explicit content keywords — block these prompts entirely
+const NSFW_KEYWORDS = [
+  "nude", "naked", "nudity", "nsfw", "explicit", "pornographic", "porn",
+  "topless", "bottomless", "genitals", "penis", "vagina", "breasts exposed",
+  "nipples", "sex", "sexual", "erotic", "hentai", "xxx", "adult content",
+  "no clothes", "without clothes", "undressed", "undressing", "lingerie only",
+  "no underwear", "barely dressed", "strip", "stripping", "aroused",
+];
+
+function promptIsNSFW(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  return NSFW_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 async function generateWithGeminiText(prompt: string): Promise<{ image: string } | null> {
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -60,7 +74,7 @@ function createFluxDevWorkflow(prompt: string, seed?: number) {
     "4": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt, "clip": ["2", 0] } },
     "5": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
     "6": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["4", 0], "negative": ["7", 0], "latent_image": ["5", 0], "seed": actualSeed, "steps": 25, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0 } },
-    "7": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
+    "7": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nudity, nsfw, explicit, pornographic, exposed genitals, exposed breasts, exposed nipples, topless, sexual content, erotic, adult content", "clip": ["2", 0] } },
     "8": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
     "9": { "class_type": "SaveImage", "inputs": { "images": ["8", 0], "filename_prefix": "lumen_flux_dev" } },
   } as Record<string, any>;
@@ -76,7 +90,7 @@ function createFluxSchnellWorkflow(prompt: string, seed?: number) {
     "4": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt, "clip": ["2", 0] } },
     "5": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
     "6": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["4", 0], "negative": ["7", 0], "latent_image": ["5", 0], "seed": actualSeed, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0 } },
-    "7": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
+    "7": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nudity, nsfw, explicit, pornographic, exposed genitals, exposed breasts, exposed nipples, topless, sexual content, erotic, adult content", "clip": ["2", 0] } },
     "8": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
     "9": { "class_type": "SaveImage", "inputs": { "images": ["8", 0], "filename_prefix": "lumen_schnell" } },
   } as Record<string, any>;
@@ -89,7 +103,7 @@ function createRealVisWorkflow(prompt: string, seed?: number) {
   return {
     "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "RealVisXL_V4.safetensors" } },
     "2": { "class_type": "CLIPTextEncode", "inputs": { "text": enhancedPrompt, "clip": ["1", 1] } },
-    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, deformed eyes, bad teeth, extra teeth, fused fingers, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, ugly, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, out of frame, watermark, signature, text, jpeg artifacts, low quality, worst quality, painting, illustration, cartoon, anime, drawing, sketch, 3d render, cgi", "clip": ["1", 1] } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nudity, nsfw, explicit, pornographic, exposed genitals, exposed breasts, exposed nipples, topless, sexual content, erotic, adult content, crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, deformed eyes, bad teeth, extra teeth, fused fingers, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, ugly, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, out of frame, watermark, signature, text, jpeg artifacts, low quality, worst quality, painting, illustration, cartoon, anime, drawing, sketch, 3d render, cgi", "clip": ["1", 1] } },
     "4": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
     "5": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": actualSeed, "steps": 12, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1.0 } },
     "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
@@ -103,7 +117,7 @@ function createSDXLWorkflow(prompt: string, seed?: number) {
   return {
     "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "juggernautXL_v9.safetensors" } },
     "2": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt, "clip": ["1", 1] } },
-    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, deformed eyes, bad teeth, extra teeth, fused fingers, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, ugly, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, out of frame, watermark, signature, text, jpeg artifacts, low quality, worst quality", "clip": ["1", 1] } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nudity, nsfw, explicit, pornographic, exposed genitals, exposed breasts, exposed nipples, topless, sexual content, erotic, adult content, crooked nose, asymmetric face, deformed mouth, crooked mouth, uneven eyes, misaligned eyes, deformed eyes, bad teeth, extra teeth, fused fingers, extra fingers, missing fingers, bad hands, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, ugly, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, out of frame, watermark, signature, text, jpeg artifacts, low quality, worst quality", "clip": ["1", 1] } },
     "4": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
     "5": { "class_type": "KSampler", "inputs": { "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": actualSeed, "steps": 12, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1.0 } },
     "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
@@ -187,6 +201,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
+    // Block NSFW/explicit content
+    if (promptIsNSFW(prompt)) {
+      console.log(`[Generate] BLOCKED NSFW prompt: ${prompt.slice(0, 60)}`);
+      return NextResponse.json({ error: "This content is not allowed. Please keep prompts appropriate and safe for work." }, { status: 400 });
+    }
+
     console.log(`[Generate] Model: ${model}, Size: ${width}x${height}, 4K: ${upscale4k}, Prompt: ${prompt.slice(0, 60)}...`);
 
     // === NANO BANANA 2.0 (Gemini 3.1): use when prompt requests text in image ===
@@ -260,9 +280,15 @@ export async function POST(request: NextRequest) {
 // QC check using Gemini Vision — returns { pass, reason }
 async function runQCCheck(imageUrl: string): Promise<{ pass: boolean; reason: string }> {
   const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB4EzkfKSTezcK2ZEUPWlkShTtDhTpO_Ic";
-  const QC_PROMPT = `You are a strict image quality inspector for a professional AI art gallery.
+  const QC_PROMPT = `You are a strict image quality and content safety inspector for a professional AI art gallery.
 
-Analyze this image and REJECT it if it has ANY of these defects:
+Analyze this image and REJECT it if it has ANY of these issues:
+
+CONTENT SAFETY (HIGHEST PRIORITY — reject immediately):
+- Nudity: exposed genitals, exposed female nipples/breasts, exposed buttocks
+- Sexually explicit or suggestive content
+- Pornographic imagery of any kind
+- Partial nudity that would not be appropriate in a professional workplace
 
 FACIAL DEFECTS (be very strict):
 - Crooked, asymmetric, or misaligned mouth or lips
@@ -284,7 +310,7 @@ TECHNICAL DEFECTS:
 - Blank areas, glitch artifacts, incomplete generation
 - Extremely blurry or corrupted image
 
-NON-DEFECTS: artistic style, dark lighting, no faces (landscapes/products/food are fine unless technically broken).
+NON-DEFECTS: artistic style, dark lighting, swimwear in appropriate context, no faces (landscapes/products/food are fine unless technically broken).
 
 Respond with ONLY valid JSON, nothing else:
 {"pass": true, "reason": ""}
