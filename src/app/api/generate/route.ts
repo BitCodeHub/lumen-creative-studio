@@ -68,7 +68,7 @@ async function generateWithGeminiText(prompt: string): Promise<{ image: string }
 function createFluxDevWorkflow(prompt: string, seed?: number) {
   const actualSeed = seed ?? Math.floor(Math.random() * 1000000);
   return {
-    "1": { "class_type": "UNETLoader", "inputs": { "unet_name": "flux1-dev.safetensors", "weight_dtype": "default" } },
+    "1": { "class_type": "UNETLoader", "inputs": { "unet_name": "flux1-dev.safetensors", "weight_dtype": "fp8_e4m3fn" } },
     "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "clip_l.safetensors", "clip_name2": "t5xxl_fp16.safetensors", "type": "flux" } },
     "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_ae.safetensors" } },
     "4": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt, "clip": ["2", 0] } },
@@ -84,7 +84,7 @@ function createFluxDevWorkflow(prompt: string, seed?: number) {
 function createFluxSchnellWorkflow(prompt: string, seed?: number) {
   const actualSeed = seed ?? Math.floor(Math.random() * 1000000);
   return {
-    "1": { "class_type": "UNETLoader", "inputs": { "unet_name": "flux1-schnell-fp8.safetensors", "weight_dtype": "default" } },
+    "1": { "class_type": "UNETLoader", "inputs": { "unet_name": "flux1-schnell.safetensors", "weight_dtype": "default" } },
     "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "clip_l.safetensors", "clip_name2": "t5xxl_fp16.safetensors", "type": "flux" } },
     "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_ae.safetensors" } },
     "4": { "class_type": "CLIPTextEncode", "inputs": { "text": prompt, "clip": ["2", 0] } },

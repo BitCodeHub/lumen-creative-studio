@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (!file) return new NextResponse('Missing file', { status: 400 });
 
   try {
-    const res = await fetch(`${GALLERY_BASE}/image/${encodeURIComponent(file)}`, {
+    const res = await fetch(`${GALLERY_BASE}/images/${encodeURIComponent(file)}`, {
       headers: { 'ngrok-skip-browser-warning': '1' },
       cache: 'no-store',
     });
