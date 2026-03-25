@@ -25,11 +25,11 @@ interface AssetItem {
 }
 
 const MODELS = [
-  { id: "flux-dev", label: "FLUX.1 Dev — Best Quality (~3-5 min)" },
-  { id: "realvis", label: "RealVis XL — Photorealistic (~30-45s)" },
-  { id: "juggernaut", label: "Juggernaut XL — Ultra Realistic (~30-45s)" },
-  { id: "dreamshaper", label: "DreamShaper 8 — Cinematic (~30-45s)" },
-  { id: "flux-schnell", label: "FLUX Schnell — Fast (~10s)" },
+  { id: "flux-schnell", label: "⚡ FLUX Schnell — Fast (~10s)" },
+  { id: "juggernaut",   label: "🏆 Juggernaut XL — Ultra Realistic (~35s)" },
+  { id: "realvis",      label: "✅ RealVis XL — Photorealistic (~35s)" },
+  { id: "dreamshaper",  label: "🎨 DreamShaper 8 — Cinematic (~30s)" },
+  { id: "flux-dev",     label: "💎 FLUX.1 Dev — Best Quality (~3-5 min)" },
 ];
 
 // Base dimensions at "Good" quality (1x). 2K doubles these, 4K uses upscaler.
@@ -193,7 +193,7 @@ function MasonryGrid({
 export default function HomePage() {
   const [activeNav, setActiveNav] = useState<"explore" | "create" | "assets">("explore");
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState("flux-dev");
+  const [model, setModel] = useState("flux-schnell");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
