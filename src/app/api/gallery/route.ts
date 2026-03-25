@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GALLERY_BASE = 'https://lumen-gallery.ngrok.app';
+const GALLERY_BASE = process.env.GALLERY_URL || 'https://lumen-gallery.ngrok.app';
 const CF_IMAGE_BASE = 'https://lumen-gallery.lumenai.workers.dev';
-
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +21,6 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json();
 
-    // Derive a readable label from filename (e.g. "asian_princess_00001_.jpg" → "Asian Princess")
     function labelFromId(id: string): string {
       return id
         .replace(/[_-]/g, ' ')
@@ -32,8 +30,6 @@ export async function GET(request: NextRequest) {
         .replace(/\b\w/g, (c) => c.toUpperCase());
     }
 
-    // Proxy image URLs through our API to avoid ngrok browser warning
-    // Gallery server returns "filename" field (not "id")
     const images = (data.images || []).map((img: { filename?: string; id?: string; prompt?: string; model?: string; [key: string]: unknown }) => {
       const filename = (img.filename || img.id || '') as string;
       return {
