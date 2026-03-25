@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         id: filename,
         filename,
         imageUrl: `/api/gallery/image?file=${encodeURIComponent(filename)}`,
+        hiresUrl: img.has_hires ? `/api/gallery/image?file=${encodeURIComponent(filename)}&quality=hires` : undefined,
         prompt: img.prompt || labelFromId(filename),
         model: img.model || 'Lumen AI',
       };

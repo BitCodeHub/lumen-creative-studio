@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
   if (!file) return new NextResponse('Missing file', { status: 400 });
 
   try {
-    const res = await fetch(`${GALLERY_BASE}/images/${encodeURIComponent(file)}`, {
+    const quality = request.nextUrl.searchParams.get('quality');
+  const endpoint = quality === 'hires' ? 'hires' : 'images';
+  const res = await fetch(`${GALLERY_BASE}/${endpoint}/${encodeURIComponent(file)}`, {
       headers: { 'ngrok-skip-browser-warning': '1' },
-      cache: 'no-store',
+      cache: quality === 'hires' ? 'force-cache' : 'no-store',
     });
     if (!res.ok) return new NextResponse('Image not found', { status: 404 });
 
