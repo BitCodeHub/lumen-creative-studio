@@ -25,11 +25,13 @@ interface AssetItem {
 }
 
 const MODELS = [
-  { id: "flux-schnell", label: "⚡ FLUX Schnell — Fast (~10s)" },
-  { id: "juggernaut",   label: "🏆 Juggernaut XL — Ultra Realistic (~35s)" },
-  { id: "realvis",      label: "✅ RealVis XL — Photorealistic (~35s)" },
-  { id: "dreamshaper",  label: "🎨 DreamShaper 8 — Cinematic (~30s)" },
-  { id: "flux-dev",     label: "💎 FLUX.1 Dev — Best Quality (~3-5 min)" },
+  { id: "flux-schnell",  label: "⚡ FLUX Schnell — Fast (~10s)" },
+  { id: "juggernaut",    label: "🏆 Juggernaut XL — Ultra Realistic (~35s)" },
+  { id: "realvis",       label: "✅ RealVis XL — Photorealistic (~35s)" },
+  { id: "dreamshaper",   label: "🎨 DreamShaper 8 — Cinematic (~30s)" },
+  { id: "animagine",     label: "🌸 Animagine XL 4.0 — Anime (~35s)" },
+  { id: "illustrious",   label: "🖼️ Illustrious XL — Anime/Illust (~35s)" },
+  { id: "flux-dev",      label: "💎 FLUX.1 Dev — Best Quality (~3-5 min)" },
 ];
 
 // Base dimensions at "Good" quality (1x). 2K doubles these, 4K uses upscaler.
@@ -315,14 +317,18 @@ export default function HomePage() {
           try {
             const poll = await fetch(`/api/generate?promptId=${savedId}`).then(r => r.json());
             if ((poll.status === "done" || poll.status === "complete") && poll.imageUrl) {
+              const totalTime = Math.round((Date.now() - start) / 1000);
               localStorage.removeItem("lumen_active_prompt_id");
               localStorage.removeItem("lumen_active_prompt_ts");
               setActivePromptId(null);
               setGeneratedImage(poll.imageUrl);
               setIsGenerating(false);
-              setProgress("");
+              setProgress(`✅ Generated in ${totalTime}s`);
               setActiveNav("create");
-              setTimeout(() => document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+              setTimeout(() => {
+                document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(() => setProgress(""), 5000); // Clear after 5s
+              }, 100);
               return;
             }
             if (poll.status === "error") {
@@ -588,14 +594,18 @@ export default function HomePage() {
         await new Promise(r => setTimeout(r, 3000));
         const poll = await fetch(`/api/generate?promptId=${promptId}`).then(r => r.json());
         if ((poll.status === "done" || poll.status === "complete") && poll.imageUrl) {
+          const totalTime = Math.round((Date.now() - start) / 1000);
           localStorage.removeItem("lumen_active_prompt_id");
           localStorage.removeItem("lumen_active_prompt_ts");
           setActivePromptId(null);
           setGeneratedImage(poll.imageUrl);
           setIsGenerating(false);
           setActiveNav("create");
-          setTimeout(() => document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
-          setProgress("");
+          setTimeout(() => {
+            document.getElementById("generated-result")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            setProgress(`✅ Generated in ${totalTime}s`);
+            setTimeout(() => setProgress(""), 5000); // Clear after 5s
+          }, 100);
           return;
         }
         if (poll.status === "rejected") {
