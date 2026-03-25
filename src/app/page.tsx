@@ -29,7 +29,7 @@ const MODELS = [
   { id: "juggernaut",    label: "🏆 Juggernaut XL — Ultra Realistic (~35s)" },
   { id: "realvis",       label: "✅ RealVis XL — Photorealistic (~35s)" },
   { id: "dreamshaper",   label: "🎨 DreamShaper 8 — Cinematic (~30s)" },
-  { id: "animagine",     label: "🌸 Animagine XL 4.0 — Anime (~35s)" },
+  { id: "animagine",     label: "🌸 Anime — Illustrious XL (~35s)" },
   { id: "illustrious",   label: "🖼️ Illustrious XL — Anime/Illust (~35s)" },
   { id: "flux-dev",      label: "💎 FLUX.1 Dev — Best Quality (~3-5 min)" },
 ];

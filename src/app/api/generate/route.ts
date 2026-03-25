@@ -185,6 +185,35 @@ async function queuePrompt(workflow: object): Promise<string> {
 }
 
 // POST — queue generation, return promptId immediately (no waiting)
+function createAnimagineWorkflow(prompt: string, seed: number) {
+  // Animagine XL 4.0 - top anime model, SDXL-based
+  // Don't add "anime" to negative prompt - it IS an anime model
+  const enhanced = `${prompt}, masterpiece, best quality, very aesthetic, absurdres`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "IllustriousXL-v0.1.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 832, "height": 1216, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, nude, naked, nsfw, explicit", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 28, "cfg": 7.0, "sampler_name": "euler_ancestral", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_anime", "images": ["6", 0] } }
+  };
+}
+
+function createIllustriousWorkflow(prompt: string, seed: number) {
+  // Illustrious XL - excellent for anime illustrations and portraits
+  const enhanced = `${prompt}, masterpiece, best quality, very aesthetic, ultra-detailed`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "IllustriousXL-v0.1.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 832, "height": 1216, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "lowres, bad anatomy, bad hands, text, error, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, nude, naked, nsfw, explicit", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 25, "cfg": 6.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_illustrious", "images": ["6", 0] } }
+  };
+}
+
 function createJuggernautWorkflow(prompt: string, seed: number) {
   const enhanced = `${prompt}, masterpiece, ultra high resolution, photorealistic, 8k uhd, natural skin texture, professional photography, cinematic lighting`;
   return {
@@ -263,6 +292,12 @@ export async function POST(request: NextRequest) {
         break;
       case "dreamshaper":
         workflow = createDreamShaperWorkflow(prompt, seed);
+        break;
+      case "animagine":
+        workflow = createAnimagineWorkflow(prompt, seed);
+        break;
+      case "illustrious":
+        workflow = createIllustriousWorkflow(prompt, seed);
         break;
       case "realvis":
       default:
