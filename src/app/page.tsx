@@ -25,16 +25,11 @@ interface AssetItem {
 }
 
 const MODELS = [
-  { id: "flux-schnell", label: "FLUX Schnell — Fast (~10s)" },
-  { id: "juggernaut-xl-v10", label: "Juggernaut XL v10 — Ultra-Realistic (~35s)" },
-  { id: "juggernaut-xl-v9", label: "Juggernaut XL v9 — Photorealistic (~35s)" },
-  { id: "realvis", label: "RealVis XL — Photorealistic (~35s)" },
-  { id: "dreamshaper-xl", label: "DreamShaper XL — Portrait Specialist (~35s)" },
-  { id: "realistic-vision-v51", label: "Realistic Vision v5.1 — Photorealistic (~35s)" },
-  { id: "epicrealism", label: "epiCRealism — Cinematic Realism (~35s)" },
-  { id: "absolute-reality", label: "AbsoluteReality — Ultra Detail (~35s)" },
   { id: "flux-dev", label: "FLUX.1 Dev — Best Quality (~3-5 min)" },
-  { id: "sdxl", label: "SDXL Base — Standard (~40s)" },
+  { id: "realvis", label: "RealVis XL — Photorealistic (~30-45s)" },
+  { id: "juggernaut", label: "Juggernaut XL — Ultra Realistic (~30-45s)" },
+  { id: "dreamshaper", label: "DreamShaper 8 — Cinematic (~30-45s)" },
+  { id: "flux-schnell", label: "FLUX Schnell — Fast (~10s)" },
 ];
 
 // Base dimensions at "Good" quality (1x). 2K doubles these, 4K uses upscaler.

@@ -185,6 +185,32 @@ async function queuePrompt(workflow: object): Promise<string> {
 }
 
 // POST — queue generation, return promptId immediately (no waiting)
+function createJuggernautWorkflow(prompt: string, seed: number) {
+  const enhanced = `${prompt}, masterpiece, ultra high resolution, photorealistic, 8k uhd, natural skin texture, professional photography, cinematic lighting`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "juggernautXL_v9.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1344, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nsfw, explicit, blurry, low quality, deformed, ugly, watermark, signature, text, cartoon, anime, drawing, bad anatomy", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 35, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_juggernaut", "images": ["6", 0] } }
+  };
+}
+
+function createDreamShaperWorkflow(prompt: string, seed: number) {
+  const enhanced = `${prompt}, cinematic, masterpiece, ultra detailed, professional photography, realistic lighting, sharp focus, 8k`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "dreamshaper_8.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 512, "height": 768, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nsfw, explicit, blurry, low quality, deformed, ugly, watermark, signature, text, bad anatomy", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 30, "cfg": 7.0, "sampler_name": "dpmpp_2m", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_dreamshaper", "images": ["6", 0] } }
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -231,6 +257,12 @@ export async function POST(request: NextRequest) {
         break;
       case "sdxl":
         workflow = createSDXLWorkflow(prompt, seed);
+        break;
+      case "juggernaut":
+        workflow = createJuggernautWorkflow(prompt, seed);
+        break;
+      case "dreamshaper":
+        workflow = createDreamShaperWorkflow(prompt, seed);
         break;
       case "realvis":
       default:
