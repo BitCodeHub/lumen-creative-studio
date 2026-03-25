@@ -25,19 +25,23 @@ interface AssetItem {
 }
 
 const MODELS = [
-  { id: "flux-schnell",  label: "⚡ FLUX Schnell — Fast (~10s)" },
-  { id: "juggernaut",    label: "🏆 Juggernaut XL — Ultra Realistic (~35s)" },
-  { id: "realvis",       label: "✅ RealVis XL — Photorealistic (~35s)" },
-  { id: "epicrealism",   label: "📸 epiCRealism XL — Cinematic Photo (~35s)" },
-  { id: "realistic_vision", label: "🌅 Realistic Vision XL — Portrait (~35s)" },
-  { id: "dreamshaper",   label: "🎨 DreamShaper 8 — Cinematic (~30s)" },
-  { id: "disney",        label: "🎬 Disney Pixar XL — 3D Animation (~35s)" },
-  { id: "protovision",   label: "🎪 ProtoVision XL — DreamWorks 3D (~35s)" },
-  { id: "playground",    label: "🎭 Playground v2.5 — Artistic (~30s)" },
-  { id: "pony",          label: "🐴 Pony Diffusion XL — Cartoon (~35s)" },
-  { id: "animagine",     label: "🌸 Anime — Illustrious XL (~35s)" },
-  { id: "illustrious",   label: "🖼️ Illustrious XL — Anime/Illust (~35s)" },
-  { id: "flux-dev",      label: "💎 FLUX.1 Dev — Best Quality (~3-5 min)" },
+  // ⚡ Fast
+  { id: "flux-schnell",    label: "⚡ FLUX Schnell — Fast (~10s)" },
+  // 📸 Photorealistic
+  { id: "juggernaut",      label: "🏆 Juggernaut XL — Ultra Realistic (~35s)" },
+  { id: "realvis",         label: "✅ RealVis XL — Photorealistic (~35s)" },
+  { id: "epicrealism",     label: "📸 epiCRealism XL — Cinematic (~35s)" },
+  { id: "realistic-vision",label: "🌅 Realistic Vision XL — Portrait (~35s)" },
+  // 🎨 Artistic
+  { id: "dreamshaper",     label: "🎨 DreamShaper 8 — Cinematic (~30s)" },
+  { id: "playground",      label: "🎭 Playground v2.5 — Artistic (~35s)" },
+  // 🎬 3D / Animation
+  { id: "disney-pixar",    label: "🎬 Disney/Pixar 3D — Animation Style (~35s)" },
+  // 🌸 Anime
+  { id: "animagine",       label: "🌸 Anime — Illustrious XL (~35s)" },
+  { id: "illustrious",     label: "🖼️ Anime/Illustration — Illustrious XL (~35s)" },
+  // 💎 Best Quality
+  { id: "flux-dev",        label: "💎 FLUX.1 Dev — Best Quality (~3-5 min)" },
 ];
 
 // Base dimensions at "Good" quality (1x). 2K doubles these, 4K uses upscaler.

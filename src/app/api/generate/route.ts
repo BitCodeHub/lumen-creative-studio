@@ -214,6 +214,58 @@ function createIllustriousWorkflow(prompt: string, seed: number) {
   };
 }
 
+function createEpiCrealismWorkflow(prompt: string, seed: number) {
+  const enhanced = `${prompt}, RAW photo, 8k uhd, dslr, soft lighting, high quality, film grain, Fujifilm XT3, photorealistic, masterpiece`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "epicrealism_xl.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1344, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nsfw, explicit, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, ugly, watermark, text, cartoon, anime", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 30, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_epicrealism", "images": ["6", 0] } }
+  };
+}
+
+function createRealisticVisionWorkflow(prompt: string, seed: number) {
+  const enhanced = `${prompt}, RAW photo, photorealistic, 8k uhd, professional photography, cinematic lighting, sharp focus`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "realistic_vision_xl.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1344, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nsfw, explicit, deformed, blurry, ugly, watermark, text, cartoon, anime, bad anatomy", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 30, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_realisticvision", "images": ["6", 0] } }
+  };
+}
+
+function createPlaygroundWorkflow(prompt: string, seed: number) {
+  const enhanced = `${prompt}, masterpiece, best quality, vibrant colors, high detail, artistic, professional`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "playground_v25.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nsfw, explicit, deformed, blurry, ugly, watermark, text, bad anatomy", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 25, "cfg": 3.0, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_playground", "images": ["6", 0] } }
+  };
+}
+
+function createDisneyPixarWorkflow(prompt: string, seed: number) {
+  const enhanced = `${prompt}, Pixar 3D render style, Disney animation quality, smooth surfaces, expressive big eyes, vibrant colors, studio lighting, professional 3D animation, cinematic`;
+  return {
+    "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "disney_pixar_xl.safetensors" } },
+    "2": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 } },
+    "3": { "class_type": "CLIPTextEncode", "inputs": { "text": enhanced, "clip": ["1", 1] } },
+    "4": { "class_type": "CLIPTextEncode", "inputs": { "text": "nude, naked, nsfw, explicit, deformed, ugly, realistic photo, blurry, watermark, text", "clip": ["1", 1] } },
+    "5": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": 28, "cfg": 6.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["1", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["2", 0] } },
+    "6": { "class_type": "VAEDecode", "inputs": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class_type": "SaveImage", "inputs": { "filename_prefix": "lumen_disney", "images": ["6", 0] } }
+  };
+}
+
 function createJuggernautWorkflow(prompt: string, seed: number) {
   const enhanced = `${prompt}, masterpiece, ultra high resolution, photorealistic, 8k uhd, natural skin texture, professional photography, cinematic lighting`;
   return {
@@ -298,6 +350,18 @@ export async function POST(request: NextRequest) {
         break;
       case "illustrious":
         workflow = createIllustriousWorkflow(prompt, seed);
+        break;
+      case "epicrealism":
+        workflow = createEpiCrealismWorkflow(prompt, seed);
+        break;
+      case "realistic-vision":
+        workflow = createRealisticVisionWorkflow(prompt, seed);
+        break;
+      case "playground":
+        workflow = createPlaygroundWorkflow(prompt, seed);
+        break;
+      case "disney-pixar":
+        workflow = createDisneyPixarWorkflow(prompt, seed);
         break;
       case "realvis":
       default:
