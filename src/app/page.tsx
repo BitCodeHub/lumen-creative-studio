@@ -25,9 +25,9 @@ interface AssetItem {
 }
 
 const MODELS = [
-  { id: "realvis", label: "RealVis XL" },
-  { id: "flux-dev", label: "FLUX.1 Dev" },
-  { id: "flux-schnell", label: "FLUX Schnell" },
+  { id: "flux-dev", label: "FLUX.1 Dev — Best Quality (~3-5 min)" },
+  { id: "realvis", label: "RealVis XL — Good Quality (~30-45s)" },
+  { id: "flux-schnell", label: "FLUX Schnell — Fast (~10s)" },
   { id: "sdxl", label: "SDXL" },
 ];
 
@@ -192,7 +192,7 @@ function MasonryGrid({
 export default function HomePage() {
   const [activeNav, setActiveNav] = useState<"explore" | "create" | "assets">("explore");
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState("realvis");
+  const [model, setModel] = useState("flux-dev");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
@@ -538,7 +538,10 @@ export default function HomePage() {
     setIsGenerating(true);
     setError("");
     setGeneratedImage(null);
-    setProgress("Submitting...");
+    const qualityMsg = model === "flux-dev" ? "Queuing FLUX.1 Dev (Best Quality, ~3-5 min)..." :
+      model === "flux-schnell" ? "Queuing FLUX Schnell (Fast, ~10s)..." :
+      "Queuing RealVis XL (Good Quality, ~30-45s)...";
+    setProgress(qualityMsg);
     setFloatingExpanded(false);
     setArPanelOpen(false);
     setFloatArPanelOpen(false);
